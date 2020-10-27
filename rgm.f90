@@ -54,7 +54,7 @@ program main
   ! ============================================================================
 
   ! Initialize wavenumber and spatial arrays ===================================
-  box_size    = 20.0*L
+  box_size    = 30.0*L
   domain_size = 512
   chunk       = domain_size/16
   allocate ( kx(domain_size), ky(domain_size), kz(domain_size) )

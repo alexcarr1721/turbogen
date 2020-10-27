@@ -49,7 +49,9 @@ module functions
 
       k = sqrt( kx**2 + ky**2 + kz**2 )
       call vonKarman_velocity(E, k, L, sigma)
-      if ( (n .eq. 1) .and. (m .eq. 1) ) then
+      if ( k .eq. 0.0 ) then
+        phi = 0.0
+      else if ( (n .eq. 1) .and. (m .eq. 1) ) then
         phi = (3.0/(4.0*pi*(k**4)) )*E*(kronecker(n,m)*(k**2) - &
           kx*kx)
       else if ( (n .eq. 1) .and. (m .eq. 2) ) then
@@ -159,21 +161,21 @@ module functions
       ! Construct frequencies ==================================================
       do i = 1,size(x)
         if (i .le. int(size(x)/2.0) + 1) then
-          fx(i) = dfx*real(i) ! dft*real(i-1)
+          fx(i) = dfx*real(i-1) ! dft*real(i-1)
         else
           fx(i) = fx(2*(int(size(x)/2.0) + 1) - i)
         end if
       end do
       do i = 1,size(y)
         if (i .le. int(size(y)/2.0) + 1) then
-          fy(i) = dfy*real(i) ! dfy*real(i-1)
+          fy(i) = dfy*real(i-1) ! dfy*real(i-1)
         else
           fy(i) = fy(2*(int(size(y)/2.0) + 1) - i)
         end if
       end do
       do i = 1,size(z)
         if (i .le. int(size(z)/2.0) + 1) then
-          fz(i) = dfz*real(i) ! dfz*real(i-1)
+          fz(i) = dfz*real(i-1) ! dfz*real(i-1)
         else
           fz(i) = fz(2*(int(size(z)/2.0) + 1) - i)
         end if

@@ -8,7 +8,7 @@ ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a 
 $(LOCAL_HDF5_LIB)/libhdf5hl_fortran.a \
 $(LOCAL_HDF5_LIB)/libhdf5_hl.a \
 $(LOCAL_HDF5_LIB)/libhdf5_fortran.a \
-$(LOCAL_HDF5_LIB)libhdf5.a -L$(LOCAL_ZLIB_LIB) \
+$(LOCAL_HDF5_LIB)/libhdf5.a -L$(LOCAL_ZLIB_LIB) \
 -lz -ldl -lm -Wl,-rpath -Wl,$(LOCAL_HDF5_LIB)
 
 default: rgm

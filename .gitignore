@@ -1,6 +1,9 @@
 *.h5
-*.mod*.h5
-*.mod*.h5
-*.mod*.h5
-*.mod*.h5
 *.mod
+/misc
+# Any generated files from cmake
+/include
+/lib
+/bin
+/build/*
+!/build/README.md

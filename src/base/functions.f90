@@ -2,12 +2,12 @@ module functions
     use mkl_dfti
     use special_functions
     implicit none
-    integer, parameter       :: sp = selected_real_kind(6, 37)
-    integer, parameter       :: dp = selected_real_kind(15, 307)
-    integer, parameter       :: isp = selected_int_kind(6)
-    integer, parameter       :: idp = selected_int_kind(10)
-    real(kind=dp), parameter :: pi = 3.141592653589793_dp
-    complex(kind=sp), parameter:: img = (0.0_sp,1.0_sp)
+    integer, parameter          :: sp = selected_real_kind(6, 37)
+    integer, parameter          :: dp = selected_real_kind(15, 307)
+    integer, parameter          :: isp = selected_int_kind(6)
+    integer, parameter          :: idp = selected_int_kind(10)
+    real(kind=dp), parameter    :: pi = 3.141592653589793_dp
+    complex(kind=sp), parameter :: img = (0.0_sp,1.0_sp)
 
 
   contains

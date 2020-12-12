@@ -1,7 +1,6 @@
-# sbDIFF: Sonic Boom propagation along the ground
+# turbogen: Generate turbulent field on Cartesian grid
 
-> Propagates an acoustic waveform in a rectangular Cartesian domain that simulates the effects of diffraction
-> by the ground.
+> Generates an isotropic turbulent field in a 3 dimensional rectangular grid.
 
 ---
 
@@ -23,10 +22,10 @@
 - Clone this repo to a directory on your local machine that you have read/write priviliges using the following command,
 
 ```shell
-$ git clone https://github.com/alexcarr1721/sbDIFF
+$ git clone https://github.com/alexcarr1721/turbogen
 ```
 
-- Make sure that you have an up to date version of cmake installed, along with MPI compilers, a parallel HDF5 build, and the intel MKL library. If you do not have all of these installed on your system then please do so before moving on to the next step. Make sure to add the binary directories for each of the above in your path, as well as the library directories in your $LD_LIBRARY_PATH variable. To build the sbDIFF program, do the following from the top-level directory <installpath>/sbDIFF
+- Make sure that you have an up to date version of cmake installed, along with MPI compilers, a parallel HDF5 build, and the intel MKL library. If you do not have all of these installed on your system then please do so before moving on to the next step. Make sure to add the binary directories for each of the above in your path, as well as the library directories in your $LD_LIBRARY_PATH variable. To build the turbogen program, do the following from the top-level directory <installpath>/turbogen
 
 ```shell
 $ cd build
@@ -53,9 +52,5 @@ $ make
 ## Support
 
 Please email me with any questions. (alexcarr.1721@gmail.com)
-
-- Website at <a href="http://fvcproductions.com" target="_blank">`fvcproductions.com`</a>
-- Twitter at <a href="http://twitter.com/fvcproductions" target="_blank">`@fvcproductions`</a>
-- Insert more social links here.
 
 ---

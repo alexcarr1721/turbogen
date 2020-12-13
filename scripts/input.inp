@@ -1,0 +1,12 @@
+ustar:	0.3	# Friction velocity 
+z0:	0.4	# Roughness height 
+zr:	10.0    # Reference height
+Tr:     288.8   # Temperature at reference height 
+g:	9.81    # Gravity
+rho: 	1.225	# Density
+cp:	1000.0  # Specific heat of air at constant pressure
+Qh:	200.0 	# 
+Ts:	293.0   # Temperature at surface
+Qe:	50.0	#
+qr:	0.35    # Specific humidity at reference height
+Lv:	2260000.0	# Latent heat of vaporization of water

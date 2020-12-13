@@ -7,6 +7,7 @@ program main
     ! General variables ==========================================================
     integer(isp)              :: i, j, k, ii, jj, kk
     real(sp)                  :: a1(1), b1(1), a2(1), b2(1), a(1), b(1)
+    character(len=80)         :: trash
     ! ============================================================================
     ! Frequency space variables ==================================================
     real(sp), parameter       :: k_max = 2.0_sp*pi
@@ -25,6 +26,11 @@ program main
     real(sp), allocatable     :: x(:), y(:), z(:)
     real(sp)                  :: box_size
     ! ============================================================================
+    ! Mean Flow variables ********************************************************
+    real(sp), allocatable     :: Vx(:), Vy(:), Vz(:), T(:), sigV(:), sigT(:)
+    real(sp), allocatable     :: LV(:), LT(:), h(:)
+    real(sp)                  :: z0, zr, ustar, Tstar, Tr, Gammad, g, cp, Qh, Ts
+    real(sp)                  :: Qe, rho0, L0, qr, L_v, q_star, wstar, zi
     ! Measurement variables ======================================================
     real(sp)                  :: L, mean, sigma
     ! ============================================================================
@@ -41,6 +47,32 @@ program main
     INTEGER(hsize_t), DIMENSION(1:rank) :: cdims ! sizes of chunked data
     INTEGER(HSIZE_T), DIMENSION(1)      :: data_dims ! dimensions of data buffers
     ! ============================================================================
+
+    ! Read input file *********************************************************
+    open(10, file="input.inp")
+    read(10,*) trash, ustar 
+    read(10,*) trash, wstar
+    read(10,*) trash, z0 
+    read(10,*) trash, zr 
+    read(10,*) trash, zi
+    read(10,*) trash, Tr
+    read(10,*) trash, g 
+    read(10,*) trash, rho0
+    read(10,*) trash, cp
+    read(10,*) trash, Qh 
+    read(10,*) trash, Ts 
+    read(10,*) trash, Qe 
+    read(10,*) trash, qr 
+    read(10,*) trash, L_v
+    close(10)
+    !**************************************************************************
+
+    ! Set parameters **********************************************************
+    Tstar = -1.0*Qh/(rho0*cp*ustar)
+    L0    = -1.0*(ustar**3)*Ts*rho0*cp/(g*0.4*Qh)
+    Gammad = g/cp 
+    q_star = -1.0*Qe/(rho0*L_v*ustar)
+    !**************************************************************************
 
     ! From measurements ==========================================================
     mean  = 0.0     ! m/s
@@ -63,11 +95,31 @@ program main
     allocate ( w2(domain_size,domain_size,domain_size) )
     allocate ( w3(domain_size,domain_size,domain_size) )
     allocate ( x(domain_size), y(domain_size), z(domain_size) )
+    allocate ( Vx(domain_size), Vy(domain_size), Vz(domain_size) )
+    allocate ( sigV(domain_size), sigT(domain_size), LV(domain_size))
+    allocate ( LT(domain_size), h(domain_size), T(domain_size) )
     do i = 1,domain_size
         x(i) = (i-1)*(1.0/(domain_size - 1.0) )*box_size
         y(i) = (i-1)*(1.0/(domain_size - 1.0) )*box_size
         z(i) = (i-1)*(1.0/(domain_size - 1.0) )*box_size
     end do
+    do i = 1,size(z,dim=1)
+        sigT(i) = sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/L0) &
+            )**(2.0/3.0) ) ) )
+        LT(i)   = 2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/L0) )/( 1.0 + &
+            10.0*(-1.0*z(i)/L0) ) )
+        sigV(i) = sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
+        LV(i)   = 1.8*z(i) + 0.23*zi 
+    end do
+
+    ! Model mean flow *********************************************************
+    call most(Vx, Vy, T, h, z, L0, z0, zr, Tr, ustar, Tstar, Gammad, 0.0, qr,&
+        q_star)
+    Vz = 0.0
+    do i = 1,size(Vx,dim=1)
+        write(*,*) sigT(i), LT(i), sigV(i), LV(i)
+    end do
+    !**************************************************************************
 
     call construct_wavenumbers(kx, ky, kz, x, y, z)
 

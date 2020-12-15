@@ -1,4 +1,19 @@
-! Test of Random Generation Method
+! Simulation of a 3D turbulent velocity and temperature field *****************
+!                                                                             *
+!   Purpose: This code simulates a 3D turbulent field using the method        *
+!            of Frelich et al. (2000) [Journal of Applied Meteorology].       *
+!            In its current form, the code simulates an incompressible        *
+!            isotropic field whose TKE spectrum is goverened by the           *
+!            von Karman model spectrum. Future work will focus on             *
+!            generalizing the code to simulate fields that are inhomogenous   *
+!            in the vertical direction, and accept TKE spectra as inputs.     *
+!                                                                             *
+!   Author: Alexander N. Carr   ( alexcarr1721@gmail.com )                    *
+!           Ph.D. Student, Theoretical Fluid Dynamics and Turbulence Group    *
+!           University of Florida                                             *
+!           Department of Mechanical and Aerospace Engineering                *
+!                                                                             *
+!******************************************************************************
 
 program main
     use mpi
@@ -159,7 +174,7 @@ program main
     !**************************************************************************
 
     ! Construct w *************************************************************
-    call construct_w(w1, w2, w3, wT, k1, k2, k3, sigV, LV, sigT, LT, &
+    call construct_w(w1, w2, w3, wT, k1, k2, k3, sigV, LV, sigT, LT, "ii", &
         MPI_COMM_WORLD)
     !**************************************************************************
 

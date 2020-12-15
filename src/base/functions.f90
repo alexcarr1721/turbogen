@@ -8,7 +8,7 @@ module functions
     integer, parameter          :: dp = selected_real_kind(15, 307)
     integer, parameter          :: isp = selected_int_kind(6)
     integer, parameter          :: idp = selected_int_kind(10)
-    real(kind=sp), parameter    :: pi = 3.141592653_sp
+    real(kind=sp), parameter    :: pi = 3.14159265358979_sp
     complex(kind=sp), parameter :: img = (0.0_sp,1.0_sp)
 
 
@@ -411,7 +411,7 @@ module functions
             if (i .le. int(size(x,dim=1)/2.0) + 1) then
               f(i) = df*real(i-1)
             else
-              f(i) = f( 2*(int(size(x,dim=1)/2.0) + 1) - i )
+              f(i) = -1.0*f( 2*(int(size(x,dim=1)/2.0) + 1) - i )
             end if
         end do
         !**********************************************************************
@@ -421,7 +421,7 @@ module functions
     end function fourier_space
 
     subroutine construct_w(w1, w2, w3, wT, kx, ky, kz, sigma, L, sigmaT, LT, &
-        comm)
+        case, comm)
         !**************************************************************************
         !   Purpose:                                                              *
         !           Construct Fourier velocities.                                 *
@@ -440,6 +440,7 @@ module functions
         !          |        z       |   Array of z values                       | *
         !          |    sigma       |   Variance of the velocity (meters/second)| *
         !          |        L       |   Integral length scale (meters)          | *
+        !          |     case       |   Which case to run: ("general", "ii")    | *
         !          |     comm       |   MPI_COMM_WORLD                          | *
         !          |________________|___________________________________________| *
         !                                                                         *
@@ -458,12 +459,13 @@ module functions
         real(sp), intent(in)          :: kx(:), ky(:), kz(:)
         real(sp), intent(in)          :: sigma(:), L(:)
         real(sp), intent(in)          :: sigmaT(:), LT(:)
+        character(len=*), intent(in)  :: case
         integer(isp), intent(in)      :: comm
         ! Local variables *********************************************************
-        real(sp)                      :: a1, b1, a2, b2, a, b
+        real(sp)                      :: a1, b1, a2, b2, a, b, ktotal
         real(sp)                      :: h11, h12, h22, h13, h23, h33, hT
         real(sp)                      :: phi11, phi12, phi22, phi13, phi23, phi33
-        real(sp)                      :: phiT
+        real(sp)                      :: phiT, E
         complex(sp)                   :: N1, N2, N3, NT
         integer(isp)                  :: i, j, k, temp3
         real(sp)                      :: dkx, dky, dkz
@@ -485,7 +487,18 @@ module functions
         dim2 = [size(w2,dim=1),size(w2,dim=2),size(w2,dim=3)*nproc]
         dim3 = [size(w3,dim=1),size(w3,dim=2),size(w3,dim=3)*nproc]
         dimT = [size(wT,dim=1),size(wT,dim=2),size(wT,dim=3)*nproc]
+
+        if ( trim(case) .eq. "general" ) then 
+            goto 100
+        else if ( trim(case) .eq. "ii" ) then 
+            goto 200
+        else
+            goto 200
+        end if
+
     
+        100 continue
+
         call random_seed()
         do k = 1,size(w1,dim=3)
           temp3 = k + proc*size(w1,dim=3)
@@ -575,33 +588,174 @@ module functions
               w1(i,j,k)  = cmplx(h11*real(N1),h11*imag(N1))*real(product(dim1))
               call velocitySpectrum(phi12, [kx(i), ky(j), kz(temp3)], &
                 sigma(temp3), L(temp3), 1, 2)
-              h12 = phi12*sqrt( dkx*dky*dkz )/sqrt(phi11)
+              if ( phi11 .eq. 0 ) then
+                ! Get E
+                call velocitySpectrum(phi11, [0.0, 0.0, 1.0], sigma(temp3), L(temp3), 1, 1)
+                h12 = phi12*sqrt( dkx*dky*dkz )/sqrt(phi11)
+              else
+                h12 = phi12*sqrt( dkx*dky*dkz )/sqrt(phi11)
+              end if
               call velocitySpectrum(phi22, [kx(i), ky(j), kz(temp3)], &
                 sigma(temp3), L(temp3), 2, 2)
-              h22 = sqrt( phi22*dkx*dky*dkz  - h12**2 )
+              if ( phi22*dkx*dky*dkz  - h12**2 .le. 0 ) then
+                h22 = 0.0
+              else
+                h22 = sqrt( phi22*dkx*dky*dkz  - h12**2 )
+              end if
               w2(i,j,k)  = (cmplx(h12,0.0)*N1 + &
                 cmplx(h22,0.0)*N2)*real(product(dim2))
               call velocitySpectrum(phi13, [kx(i), ky(j), kz(temp3)], &
                 sigma(temp3), L(temp3), 1, 3)
-              h13 = phi13*sqrt( dkx*dky*dkz )/sqrt(phi11)
+              if ( phi11 .eq. 0 ) then
+                ! Get E
+                call velocitySpectrum(phi11, [0.0, 0.0, 1.0], sigma(temp3), L(temp3), 1, 1)
+                h13 = phi13*sqrt( dkx*dky*dkz )/sqrt(phi11)
+              else
+                h13 = phi13*sqrt( dkx*dky*dkz )/sqrt(phi11)
+              end if
               call velocitySpectrum(phi23, [kx(i), ky(j), kz(temp3)], &
                 sigma(temp3), L(temp3), 2, 3)
               h23 = ( phi23*dkx*dky*dkz - h12*h13 )/sqrt(phi22)
               call velocitySpectrum(phi33, [kx(i), ky(j), kz(temp3)], &
                 sigma(temp3), L(temp3), 3, 3)
-              h33 = sqrt( phi33*dkx*dky*dkz - (h13**2) - (h23**2) )
+              if ( phi33*dkx*dky*dkz - (h13**2) - (h23**2) .le. 0 ) then 
+                h33 = 0.0 
+              else
+                h33 = sqrt( phi33*dkx*dky*dkz - (h13**2) - (h23**2) )
+              end if
               w3(i,j,k)  = (cmplx(h13,0.0)*N1 + cmplx(h23,0.0)*N2 &
                 + cmplx(h33,0.0)*N3)*real(product(dim3))
               call vonKarman_temperature(phiT, &
                 sqrt(kx(i)**2 + ky(j)**2 + kz(temp3)**2), LT(temp3), sigmaT(temp3))
               hT = sqrt( phiT*dkx*dky*dkz )
               wT(i,j,k)  = cmplx(hT,0.0)*NT*real(product(dimT))
-              if ( isnan(real(w1(i,j,k))) ) then
-                write (*,*) real(w1(i,j,k)), kx(i), ky(j), kz(temp3), proc, N1
-              end if
+              if ( isnan(real(w2(i,j,k))) ) write (*,*) w2(i,j,k), h12**2, phi12, phi11, kx(i), ky(j), kz(temp3)
             end do
           end do
         end do
+
+        goto 999
+
+        200 continue
+
+        call random_seed()
+        do k = 1,size(w1,dim=3)
+          temp3 = k + proc*size(w1,dim=3)
+          do j = 1,size(w1,dim=2)
+            do i = 1,size(w1,dim=1)
+              ! Random vectors
+              call random_number(a1)
+              do while ( a1 .eq. 0 )
+                call random_number(a1)
+              end do
+              call random_number(b1)
+              do while ( b1 .eq. 0 )
+                call random_number(b1)
+              end do
+              call gaussian_boxmuller(a, a1, b1, 0.0_sp, 1.0_sp)
+              call random_number(a2)
+              do while ( a2 .eq. 0 )
+                call random_number(a2)
+              end do
+              call random_number(b2)
+              do while ( b1 .eq. 0 )
+                call random_number(b1)
+              end do
+              call gaussian_boxmuller(b, a2, b2, 0.0_sp, 1.0_sp)
+              N1 = a + img*b
+              call random_number(a1)
+              do while ( a1 .eq. 0 )
+                call random_number(a1)
+              end do
+              call random_number(b1)
+              do while ( b1 .eq. 0 )
+                call random_number(b1)
+              end do
+              call gaussian_boxmuller(a, a1, b1, 0.0_sp, 1.0_sp)
+              call random_number(a2)
+              do while ( a2 .eq. 0 )
+                call random_number(a2)
+              end do
+              call random_number(b2)
+              do while ( b1 .eq. 0 )
+                call random_number(b1)
+              end do
+              call gaussian_boxmuller(b, a2, b2, 0.0_sp, 1.0_sp)
+              N2 = a + img*b
+              call random_number(a1)
+              do while ( a1 .eq. 0 )
+                call random_number(a1)
+              end do
+              call random_number(b1)
+              do while ( b1 .eq. 0 )
+                call random_number(b1)
+              end do
+              call gaussian_boxmuller(a, a1, b1, 0.0_sp, 1.0_sp)
+              call random_number(a2)
+              do while ( a2 .eq. 0 )
+                call random_number(a2)
+              end do
+              call random_number(b2)
+              do while ( b1 .eq. 0 )
+                call random_number(b1)
+              end do
+              call gaussian_boxmuller(b, a2, b2, 0.0_sp, 1.0_sp)
+              N3 = a + img*b
+              call random_number(a1)
+              do while ( a1 .eq. 0 )
+                call random_number(a1)
+              end do
+              call random_number(b1)
+              do while ( b1 .eq. 0 )
+                call random_number(b1)
+              end do
+              call gaussian_boxmuller(a, a1, b1, 0.0_sp, 1.0_sp)
+              call random_number(a2)
+              do while ( a2 .eq. 0 )
+                call random_number(a2)
+              end do
+              call random_number(b2)
+              do while ( b1 .eq. 0 )
+                call random_number(b1)
+              end do
+              call gaussian_boxmuller(b, a2, b2, 0.0_sp, 1.0_sp)
+              NT = a + img*b
+              ! Velocity spectrum
+              ktotal = sqrt( kx(i)**2 + ky(j)**2 + kz(temp3)**2 )
+              call vonKarman_velocity(E, ktotal, L(temp3), sigma(temp3) )
+              if ( (ky(j) + kz(temp3)) .eq. 0 ) then
+                h11 = 0.0
+                h22 = 0.0
+                h33 = 0.0
+                h13 = 0.0
+                h12 = -1.0*sqrt( E*dkx*dky*dkz )
+                h23 = -1.0*sqrt( E*dkx*dky*dkz )
+              else
+                h11 = sqrt( E*( ky(j)**2 + kz(temp3)**2 )*dkx*dky*dkz )
+                h12 = -1.0*sqrt(E*dkx*dky*dkz/( ky(j)**2 + kz(temp3)**2 ) )*kx(i)*ky(j)
+                h13 = -1.0*sqrt(E*dkx*dky*dkz/( ky(j)**2 + kz(temp3)**2 ) )*kx(i)*kz(temp3)
+                h22 = sqrt(E*dkx*dky*dkz*(ktotal**2)/( ky(j)**2 + kz(temp3)**2 ) )*kz(temp3)
+                h23 = sqrt(E*dkx*dky*dkz*(ktotal**2)/( ky(j)**2 + kz(temp3)**2 ) )*ky(j)
+                h33 = 0.0
+              end if
+              w1(i,j,k)  = cmplx(h11*real(N1),h11*imag(N1))*real(product(dim1))
+              w2(i,j,k)  = (cmplx(h12,0.0)*N1 + &
+                cmplx(h22,0.0)*N2)*real(product(dim2))
+              w3(i,j,k)  = (cmplx(h13,0.0)*N1 + cmplx(h23,0.0)*N2 &
+                + cmplx(h33,0.0)*N3)*real(product(dim3))
+              call vonKarman_temperature(phiT, ktotal, LT(temp3), sigmaT(temp3))
+              hT = sqrt( phiT*dkx*dky*dkz )
+              wT(i,j,k)  = cmplx(hT,0.0)*NT*real(product(dimT))
+              if ( isnan(real(w2(i,j,k))) ) write (*,*) w2(i,j,k), h12**2, phi12, phi11, kx(i), ky(j), kz(temp3)
+            end do
+          end do
+        end do
+
+        goto 999
+
+        999 continue
+
+
 
     end subroutine construct_w
 

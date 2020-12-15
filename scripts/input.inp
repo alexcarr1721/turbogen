@@ -1,6 +1,8 @@
-ustar:	0.3	# Friction velocity 
+ustar:	0.3	# Friction velocity
+wstar:	1.76	# Mixed layer velocity 
 z0:	0.4	# Roughness height 
 zr:	10.0    # Reference height
+zi:	2000.0	# BL height
 Tr:     288.8   # Temperature at reference height 
 g:	9.81    # Gravity
 rho: 	1.225	# Density

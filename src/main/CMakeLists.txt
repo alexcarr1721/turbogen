@@ -12,7 +12,7 @@ ADD_EXECUTABLE(${MAINEXE} ${main_src})
 # Add the needed libraries and special compiler flags
 #####################################################
 
-# This links foo to the bar library
+# This links main to the base library
 TARGET_LINK_LIBRARIES(${MAINEXE} ${TURBOBASELIB})
 
 # Uncomment if you need to link to BLAS and LAPACK
@@ -24,7 +24,6 @@ TARGET_LINK_LIBRARIES(${MAINEXE} ${TURBOBASELIB})
 INCLUDE_DIRECTORIES(${HDF5_INCLUDE_DIRS})
 TARGET_LINK_LIBRARIES(${MAINEXE} ${HDF5_Fortran_LIBRARIES})
 
-# Uncomment if you have parallization
 IF(USE_MPI)
     SET_TARGET_PROPERTIES(${MAINEXE} PROPERTIES
                           COMPILE_FLAGS "${MPI_Fortran_COMPILE_FLAGS}"

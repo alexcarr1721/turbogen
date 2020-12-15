@@ -1,70 +1,76 @@
 ! Test of Random Generation Method
 
 program main
+    use mpi
     use hdf5
     use functions
     implicit none
-    ! General variables ==========================================================
-    integer(isp)              :: i, j, k, ii, jj, kk
-    real(sp)                  :: a1(1), b1(1), a2(1), b2(1), a(1), b(1)
-    character(len=80)         :: trash
-    ! ============================================================================
-    ! Frequency space variables ==================================================
-    real(sp), parameter       :: k_max = 2.0_sp*pi
-    real(sp), allocatable     :: kx(:), ky(:), kz(:)
-    integer(isp)              :: domain_size, modes
-    ! ============================================================================
-    ! RGM method variables =======================================================
-    complex(sp), allocatable  :: w1(:,:,:), w2(:,:,:), w3(:,:,:)
-    real(sp)                  :: h11, h12, h22, h13, h23, h33, phi11, phi12, phi22
-    real(sp)                  :: phi13, phi23, phi33
-    complex(sp)               :: N1, N2, N3
-    ! ============================================================================
-    ! Field variables ============================================================
-    complex(sp), allocatable  :: u1(:,:,:), u2(:,:,:), u3(:,:,:)
-    real(sp), allocatable     :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
+    ! General variables *******************************************************
+    integer(isp)                :: i, proc, nproc, mpi_err
+    character(len=80)           :: trash
+    character(len=8), parameter :: filename = "turbo.h5"
+    !**************************************************************************
+    ! Frequency space variables ***********************************************
+    real(sp), allocatable     :: k1(:), k2(:), k3(:), f1(:), f2(:), f3(:)
+    !**************************************************************************
+    ! RGM method variables ****************************************************
+    complex(sp), allocatable  :: w1(:,:,:), w2(:,:,:), w3(:,:,:), wT(:,:,:)
+    complex(sp), allocatable  :: temp1(:,:,:), temp2(:,:,:), temp3(:,:,:)
+    !**************************************************************************
+    ! Field variables *********************************************************
+    complex(sp), allocatable  :: u1(:,:,:), u2(:,:,:), u3(:,:,:), T1(:,:,:)
+    real(sp), allocatable     :: ux(:,:,:), uy(:,:,:), uz(:,:,:), Temp(:,:,:)
     real(sp), allocatable     :: x(:), y(:), z(:)
-    real(sp)                  :: box_size
-    ! ============================================================================
-    ! Mean Flow variables ********************************************************
+    real(sp)                  :: xmin, ymin, zmin, xmax, ymax, zmax
+    integer(isp)              :: xsize, ysize, zsize
+    !**************************************************************************
+    ! Mean Flow variables *****************************************************
     real(sp), allocatable     :: Vx(:), Vy(:), Vz(:), T(:), sigV(:), sigT(:)
     real(sp), allocatable     :: LV(:), LT(:), h(:)
-    real(sp)                  :: z0, zr, ustar, Tstar, Tr, Gammad, g, cp, Qh, Ts
-    real(sp)                  :: Qe, rho0, L0, qr, L_v, q_star, wstar, zi
-    ! Measurement variables ======================================================
-    real(sp)                  :: L, mean, sigma
-    ! ============================================================================
-    ! HDF5 variables =============================================================
-    CHARACTER(LEN=12), PARAMETER :: filename = "turbo.h5"
-    INTEGER, PARAMETER  :: rank = 3   ! Rank of the data set
+    real(sp)                  :: z0, zr, ustar, Tstar, Tr, Gammad, g, cp, Qh
+    real(sp)                  :: Qe, rho0, L0, qr, L_v, q_star, wstar, zi, Ts
+    !**************************************************************************
 
-    INTEGER(hid_t) :: file_id, dataset_id, dataspace_id ! Identifiers
-    INTEGER(hid_t) :: dataset_id1, dataspace_id1 ! Identifiers
-    INTEGER(hid_t) :: plist_id ! Property list identifier
-
-    INTEGER :: herror, chunk
-    INTEGER(hsize_t), DIMENSION(1:rank) :: dims ! dimensions of data
-    INTEGER(hsize_t), DIMENSION(1:rank) :: cdims ! sizes of chunked data
-    INTEGER(HSIZE_T), DIMENSION(1)      :: data_dims ! dimensions of data buffers
-    ! ============================================================================
+    ! Get processor information ***********************************************
+    call MPI_INIT(mpi_err)
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, nproc, mpi_err)
+    call MPI_COMM_RANK(MPI_COMM_WORLD, proc, mpi_err)
+    !**************************************************************************
 
     ! Read input file *********************************************************
-    open(10, file="input.inp")
-    read(10,*) trash, ustar 
-    read(10,*) trash, wstar
-    read(10,*) trash, z0 
-    read(10,*) trash, zr 
-    read(10,*) trash, zi
-    read(10,*) trash, Tr
-    read(10,*) trash, g 
-    read(10,*) trash, rho0
-    read(10,*) trash, cp
-    read(10,*) trash, Qh 
-    read(10,*) trash, Ts 
-    read(10,*) trash, Qe 
-    read(10,*) trash, qr 
-    read(10,*) trash, L_v
-    close(10)
+    if ( proc .eq. 0 ) then
+        open(unit = 10, file="input.inp")
+        read(10,*) trash, ustar 
+        read(10,*) trash, wstar
+        read(10,*) trash, z0 
+        read(10,*) trash, zr 
+        read(10,*) trash, zi
+        read(10,*) trash, Tr
+        read(10,*) trash, g 
+        read(10,*) trash, rho0
+        read(10,*) trash, cp
+        read(10,*) trash, Qh 
+        read(10,*) trash, Ts 
+        read(10,*) trash, Qe 
+        read(10,*) trash, qr 
+        read(10,*) trash, L_v
+        close(10)
+    end if
+    call MPI_Bcast(ustar, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(wstar, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(z0, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(zr, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(zi, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(Tr, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(g, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(rho0, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(cp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(Qh, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(Ts, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(Qe, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(qr, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(L_v, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Barrier(MPI_COMM_WORLD, mpi_err)
     !**************************************************************************
 
     ! Set parameters **********************************************************
@@ -74,137 +80,154 @@ program main
     q_star = -1.0*Qe/(rho0*L_v*ustar)
     !**************************************************************************
 
-    ! From measurements ==========================================================
-    mean  = 0.0     ! m/s
-    sigma = 22.2   ! m/s
-    L     = 2.40  ! m
-    ! ============================================================================
+    ! Construct Domain ********************************************************
+    if ( proc .eq. 0 ) then
+        open (unit = 10, file = "domain.inp" )
+        read (10,*) trash, trash, trash
+        read (10,*) xmin, ymin, zmin
+        read (10,*) xmax, ymax, zmax
+        close(10)
+        open(10, file="grid.inp")
+        read(10,*) trash, xsize
+        read(10,*) trash, ysize 
+        read(10,*) trash, zsize 
+        close(10)
+    end if
+    call MPI_Bcast(xmin, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(ymin, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(zmin, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(xmax, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(ymax, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(zmax, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(xsize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(ysize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(zsize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Barrier(MPI_COMM_WORLD, mpi_err)
+    allocate ( x(xsize), y(ysize), z(zsize) )
+    x = (/ ( ( xmin + (i-1)*( (xmax - xmin)/(size(x,dim=1) - 1) ) &
+        ),i=1,size(x,dim=1) ) /)
+    y = (/ ( ( ymin + (i-1)*( (ymax - ymin)/(size(y,dim=1) - 1) ) &
+        ),i=1,size(y,dim=1) ) /)
+    z = (/ ( ( zmin + (i-1)*( (zmax - zmin)/(size(z,dim=1) - 1) ) &
+        ),i=1,size(z,dim=1) ) /)
+    !**************************************************************************
 
-    ! Initialize wavenumber and spatial arrays ===================================
-    box_size    = 30.0*L
-    domain_size = 512
-    chunk       = domain_size/16
-    allocate ( kx(domain_size), ky(domain_size), kz(domain_size) )
-    allocate ( ux(domain_size,domain_size,domain_size) )
-    allocate ( uy(domain_size,domain_size,domain_size) )
-    allocate ( uz(domain_size,domain_size,domain_size) )
-    allocate ( u1(domain_size,domain_size,domain_size) )
-    allocate ( u2(domain_size,domain_size,domain_size) )
-    allocate ( u3(domain_size,domain_size,domain_size) )
-    allocate ( w1(domain_size,domain_size,domain_size) )
-    allocate ( w2(domain_size,domain_size,domain_size) )
-    allocate ( w3(domain_size,domain_size,domain_size) )
-    allocate ( x(domain_size), y(domain_size), z(domain_size) )
-    allocate ( Vx(domain_size), Vy(domain_size), Vz(domain_size) )
-    allocate ( sigV(domain_size), sigT(domain_size), LV(domain_size))
-    allocate ( LT(domain_size), h(domain_size), T(domain_size) )
-    do i = 1,domain_size
-        x(i) = (i-1)*(1.0/(domain_size - 1.0) )*box_size
-        y(i) = (i-1)*(1.0/(domain_size - 1.0) )*box_size
-        z(i) = (i-1)*(1.0/(domain_size - 1.0) )*box_size
-    end do
+    ! Initialize wavenumber and spatial arrays ********************************
+    allocate ( k1(xsize), k2(ysize), k3(zsize) )
+    allocate ( f1(xsize), f2(ysize), f3(zsize) )
+    allocate ( ux(xsize,ysize,zsize/nproc) )
+    allocate ( uy(xsize,ysize,zsize/nproc) )
+    allocate ( uz(xsize,ysize,zsize/nproc) )
+    allocate ( Temp(xsize,ysize,zsize/nproc) )
+    allocate ( u1(xsize,ysize,zsize/nproc) )
+    allocate ( u2(xsize,ysize,zsize/nproc) )
+    allocate ( u3(xsize,ysize,zsize/nproc) )
+    allocate ( T1(xsize,ysize,zsize/nproc) )
+    allocate ( w1(size(ux,dim=3)*nproc,size(ux,dim=1),size(ux,dim=2)/nproc) )
+    allocate ( w2(size(uy,dim=3)*nproc,size(uy,dim=1),size(uy,dim=2)/nproc) )
+    allocate ( w3(size(uz,dim=3)*nproc,size(uz,dim=1),size(uz,dim=2)/nproc) )
+    allocate ( wT(size(T1,dim=3)*nproc,size(T1,dim=1),size(T1,dim=2)/nproc) )
+    allocate ( Vx(xsize), Vy(ysize), Vz(zsize) )
+    allocate ( sigV(zsize), sigT(zsize), LV(zsize))
+    allocate ( LT(zsize), h(zsize), T(zsize) )
+    allocate ( temp1(2,2,2))
+    allocate ( temp2(2,2,2))
+    allocate ( temp3(2,2,2))
     do i = 1,size(z,dim=1)
-        sigT(i) = sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/L0) &
-            )**(2.0/3.0) ) ) )
-        LT(i)   = 2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/L0) )/( 1.0 + &
-            10.0*(-1.0*z(i)/L0) ) )
-        sigV(i) = sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
-        LV(i)   = 1.8*z(i) + 0.23*zi 
+        sigT(i) = 2.0 !sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/L0) &
+            !)**(2.0/3.0) ) ) )
+        LT(i)   = 200.0!2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/L0) )/( 1.0 + &
+            !10.0*(-1.0*z(i)/L0) ) )
+        sigV(i) = 5.0!sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
+        LV(i)   = 300.0!1.8*z(i) + 0.23*zi 
     end do
+    !**************************************************************************
 
     ! Model mean flow *********************************************************
     call most(Vx, Vy, T, h, z, L0, z0, zr, Tr, ustar, Tstar, Gammad, 0.0, qr,&
         q_star)
     Vz = 0.0
-    do i = 1,size(Vx,dim=1)
-        write(*,*) sigT(i), LT(i), sigV(i), LV(i)
-    end do
     !**************************************************************************
 
-    call construct_wavenumbers(kx, ky, kz, x, y, z)
+    ! Construct wavenumbers ***************************************************
+    f1 = fourier_space(x)
+    f2 = fourier_space(y)
+    f3 = fourier_space(z)
+    k1 = 2.0*pi*f1
+    k2 = 2.0*pi*f2 
+    k3 = 2.0*pi*f3
+    !**************************************************************************
 
-    ! ============================================================================
+    ! Construct w *************************************************************
+    call construct_w(w1, w2, w3, wT, k1, k2, k3, sigV, LV, sigT, LT, &
+        MPI_COMM_WORLD)
+    !**************************************************************************
 
-    ! Construct w ================================================================
-    call construct_w(w1, w2, w3, x, y, z, kx, ky, kz, mean, sigma, L, "uncorrelated")
-    ! ============================================================================
+    ! Compute iFFT in z ( 1st dimension of w ) ********************************
+    call mkl_fft(w1(:,1,1), [size(ux,dim=3)*nproc,size(ux,dim=1),&
+        size(ux,dim=2)/nproc], 1, inverse=.true. )
+    call mkl_fft(w2(:,1,1), [size(uy,dim=3)*nproc,size(uy,dim=1),&
+        size(uy,dim=2)/nproc], 1, inverse=.true. )
+    call mkl_fft(w3(:,1,1), [size(uz,dim=3)*nproc,size(uz,dim=1),&
+        size(uz,dim=2)/nproc], 1, inverse=.true. )
+    call mkl_fft(wT(:,1,1), [size(T1,dim=3)*nproc,size(T1,dim=1),&
+        size(T1,dim=2)/nproc], 1, inverse=.true. )
+    !**************************************************************************
 
-    ! Inverse FFT ================================================================
-    call fft( w1(:,1,1), [domain_size, domain_size, domain_size], 3, .true. )
-    call fft( w2(:,1,1), [domain_size, domain_size, domain_size], 3, .true. )
-    call fft( w3(:,1,1), [domain_size, domain_size, domain_size], 3, .true. )
-    ux = real(w1)
-    uy = real(w2)
-    uz = real(w3)
-    ! ============================================================================
+    ! Transpose out of place **************************************************
+    call transpose(u1(:,1,1), temp1(:,1,1), w1(:,1,1), [size(ux,dim=1),&
+        size(ux,dim=2),size(ux,dim=3)], [2,2,2], [size(ux,dim=3)*nproc,&
+        size(ux,dim=1),size(ux,dim=2)/nproc], 231, MPI_COMM_WORLD )
+    call transpose(u2(:,1,1), temp2(:,1,1), w2(:,1,1), [size(uy,dim=1),&
+        size(uy,dim=2),size(uy,dim=3)], [2,2,2], [size(uy,dim=3)*nproc,&
+        size(uy,dim=1),size(uy,dim=2)/nproc], 231, MPI_COMM_WORLD  )
+    call transpose(u3(:,1,1), temp3(:,1,1), w3(:,1,1), [size(uz,dim=1),&
+        size(uz,dim=2),size(uz,dim=3)], [2,2,2], [size(uz,dim=3)*nproc,&
+        size(uz,dim=1),size(uz,dim=2)/nproc], 231, MPI_COMM_WORLD  )
+    call transpose(T1(:,1,1), temp3(:,1,1), wT(:,1,1), [size(T1,dim=1),&
+        size(T1,dim=2),size(T1,dim=3)], [2,2,2], [size(T1,dim=3)*nproc,&
+        size(T1,dim=1),size(T1,dim=2)/nproc], 231, MPI_COMM_WORLD  )
+    !**************************************************************************
 
-    ! HDF5 storage ===============================================================
-    call h5open_f(herror)
-    !
-    ! Create a file
-    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, herror)
-    !
-    ! Create dataset "Compressed Data" in the group using absolute name.
-    dims(1:3) = [domain_size, domain_size, domain_size]
-    call h5screate_simple_f(rank, dims, dataspace_id, herror)
-    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, herror)
-    !
-    ! Dataset must be chunked for compression
-    cdims(1:3) = [chunk, chunk, chunk]
-    CALL h5pset_chunk_f(plist_id, 3, cdims, herror)
+    ! Compute iFFT in x, y ****************************************************
+    call mkl_fft(u1(:,1,1), [size(ux,dim=1),size(ux,dim=2),size(ux,dim=3)],&
+        2, inverse=.true. )
+    call mkl_fft(u2(:,1,1), [size(uy,dim=1),size(uy,dim=2),size(uy,dim=3)],&
+        2, inverse=.true. )
+    call mkl_fft(u3(:,1,1), [size(ux,dim=1),size(ux,dim=2),size(ux,dim=3)],&
+        2, inverse=.true. )
+    call mkl_fft(T1(:,1,1), [size(T1,dim=1),size(T1,dim=2),size(T1,dim=3)],&
+        2, inverse=.true. )
+    !**************************************************************************
 
-    ! Set ZLIB / DEFLATE Compression using compression level 6.
-    ! To use SZIP Compression comment out these lines.
-    CALL h5pset_deflate_f(plist_id, 6, herror)
+    ux = real(u1)
+    uy = real(u2)
+    uz = real(u3)
+    Temp = real(T1)
 
-    ! Create data set
-    CALL h5dcreate_f(file_id, "ux", H5T_NATIVE_REAL, dataspace_id, &
-        dataset_id, herror, dcpl_id=plist_id)
+    ! Write to file ***********************************************************
+    call create_h5_f(filename, MPI_COMM_WORLD )
+    call create_h5_d(filename, "ux", [size(ux,dim=1),&
+        size(uy,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, ux(:,1,1),&
+        chunked=.true., dim_chunk=shape(ux), &
+        offset=[0, 0, proc*size(ux,dim=3)])
+    call create_h5_d(filename, "uy", [size(uy,dim=1),&
+        size(uy,dim=2), size(uy,dim=3)*nproc], MPI_COMM_WORLD, uy(:,1,1),&
+        chunked=.true., dim_chunk=shape(uy), &
+        offset=[0, 0, proc*size(uy,dim=3)])
+    call create_h5_d(filename, "uz", [size(uz,dim=1),&
+        size(uz,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, uz(:,1,1),&
+        chunked=.true., dim_chunk=shape(uz), &
+        offset=[0, 0, proc*size(uz,dim=3)])
+    call create_h5_d(filename, "T", [size(T1,dim=1),&
+        size(T1,dim=2), size(T1,dim=3)*nproc], MPI_COMM_WORLD, Temp(:,1,1),&
+        chunked=.true., dim_chunk=shape(Temp), &
+        offset=[0, 0,proc*size(T1,dim=3)])
+    !**************************************************************************
 
-    CALL h5dwrite_f(dataset_id, H5T_NATIVE_REAL, ux, dims, herror)
 
-    ! Create data set
-    CALL h5dcreate_f(file_id, "uy", H5T_NATIVE_REAL, dataspace_id, &
-        dataset_id, herror, dcpl_id=plist_id)
-
-    CALL h5dwrite_f(dataset_id, H5T_NATIVE_REAL, uy, dims, herror)
-
-    ! Create data set
-    CALL h5dcreate_f(file_id, "uz", H5T_NATIVE_REAL, dataspace_id, &
-        dataset_id, herror, dcpl_id=plist_id)
-
-    CALL h5dwrite_f(dataset_id, H5T_NATIVE_REAL, uz, dims, herror)
-
-    ! Create data set
-    data_dims = [domain_size]
-    call h5screate_simple_f(1, data_dims, dataspace_id1, herror)
-    CALL h5dcreate_f(file_id, "x", H5T_NATIVE_REAL, dataspace_id1, &
-        dataset_id1, herror)
-
-    CALL h5dwrite_f(dataset_id1, H5T_NATIVE_REAL, x, data_dims, herror)
-
-    ! Create data set
-    CALL h5dcreate_f(file_id, "y", H5T_NATIVE_REAL, dataspace_id1, &
-        dataset_id1, herror)
-
-    CALL h5dwrite_f(dataset_id1, H5T_NATIVE_REAL, y, data_dims, herror)
-
-    ! Create data set
-    CALL h5dcreate_f(file_id, "z", H5T_NATIVE_REAL, dataspace_id1, &
-        dataset_id1, herror)
-
-    CALL h5dwrite_f(dataset_id1, H5T_NATIVE_REAL, z, data_dims, herror)
-
-    ! Close resources
-    CALL h5sclose_f(dataspace_id, herror)
-    CALL h5pclose_f(plist_id, herror)
-    CALL h5dclose_f(dataset_id, herror)
-    CALL h5sclose_f(dataspace_id1, herror)
-    CALL h5dclose_f(dataset_id1, herror)
-    CALL h5fclose_f(file_id, herror)
-    ! ============================================================================
-
-    deallocate ( kx, ky, kz, ux, uy, uz, u1, u2, u3, w1, w2, w3, x, y, z )
-
+    deallocate ( k1, k2, k3, f1, f2, f3, ux, uy, uz, Temp, u1, u2, u3, T1, &
+        w1, w2, w3, wT, x, y, z )
+    call MPI_FINALIZE(mpi_err)
 
 end program main

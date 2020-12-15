@@ -29,7 +29,7 @@ ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
 # Set some options the user may choose
 # Uncomment the below if you want the user to choose a parallelization library
-OPTION(USE_MPI "Use the MPI library for parallelization" OFF)
+OPTION(USE_MPI "Use the MPI library for parallelization" ON)
 OPTION(MKL_STATIC "Use static linking for MKL libraries" ON)
 OPTION(MKL_NEEDEXTRA "Import extra libraries, scalapack and cdft" OFF)
 

@@ -22,7 +22,7 @@ program main
     implicit none
     ! General variables *******************************************************
     integer(isp)                :: i, proc, nproc, mpi_err
-    character(len=80)           :: trash, groupname, filename
+    character(len=80)           :: trash, groupname, filename, case
     !**************************************************************************
     ! Frequency space variables ***********************************************
     real(sp), allocatable     :: k1(:), k2(:), k3(:), f1(:), f2(:), f3(:)
@@ -43,6 +43,7 @@ program main
     real(sp), allocatable     :: LV(:), LT(:), h(:)
     real(sp)                  :: z0, zr, ustar, Tstar, Tr, Gammad, g, cp, Qh
     real(sp)                  :: Qe, rho0, L0, qr, L_v, q_star, wstar, zi, Ts
+    real(sp)                  :: Ltemp, LTtemp, sigtemp, sigTtemp
     !**************************************************************************
 
     ! Get processor information ***********************************************
@@ -61,6 +62,7 @@ program main
     ! Read input file *********************************************************
     if ( proc .eq. 0 ) then
         open(unit = 10, file="input.inp")
+        read(10,*) trash, case
         read(10,*) trash, ustar 
         read(10,*) trash, wstar
         read(10,*) trash, z0 
@@ -75,8 +77,14 @@ program main
         read(10,*) trash, Qe 
         read(10,*) trash, qr 
         read(10,*) trash, L_v
+        read(10,*) trash, sigtemp
+        read(10,*) trash, Ltemp 
+        read(10,*) trash, sigTtemp 
+        read(10,*) trash, LTtemp
         close(10)
     end if
+    call MPI_Bcast(case, 80, MPI_CHARACTER, 0, MPI_COMM_WORLD, mpi_err)
+    case = trim(case)
     call MPI_Bcast(ustar, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(wstar, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(z0, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
@@ -91,6 +99,10 @@ program main
     call MPI_Bcast(Qe, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(qr, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(L_v, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(sigtemp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(Ltemp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(sigTtemp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(LTtemp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Barrier(MPI_COMM_WORLD, mpi_err)
     !**************************************************************************
 
@@ -154,14 +166,30 @@ program main
     allocate ( temp1(2,2,2))
     allocate ( temp2(2,2,2))
     allocate ( temp3(2,2,2))
-    do i = 1,size(z,dim=1)
-        sigT(i) = sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/L0) &
-            )**(2.0/3.0) ) ) )
-        LT(i)   = 2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/L0) )/( 1.0 + &
-            10.0*(-1.0*z(i)/L0) ) )
-        sigV(i) = sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
-        LV(i)   = 1.8*z(i) + 0.23*zi 
-    end do
+    if ( case .eq. "isotropic" ) then
+        do i = 1,size(z,dim=1)
+            sigT(i) = sigTtemp
+            LT(i)   = LTtemp
+            sigV(i) = sigtemp
+            LV(i)   = Ltemp
+        end do
+    else if ( case .eq. "most" ) then 
+        do i = 1,size(z,dim=1)
+            sigT(i) = sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/L0) &
+                )**(2.0/3.0) ) ) )
+            LT(i)   = 2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/L0) )/( 1.0 + &
+                10.0*(-1.0*z(i)/L0) ) )
+            sigV(i) = sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
+            LV(i)   = 1.8*z(i) + 0.23*zi 
+        end do
+    else
+        do i = 1,size(z,dim=1)
+            sigT(i) = sigTtemp
+            LT(i)   = LTtemp
+            sigV(i) = sigtemp
+            LV(i)   = Ltemp
+        end do
+    end if
     !**************************************************************************
 
     ! Model mean flow *********************************************************
@@ -245,8 +273,8 @@ program main
         size(T1,dim=2), size(T1,dim=3)*nproc], MPI_COMM_WORLD, Temp(:,1,1),&
         chunked=.true., dim_chunk=shape(Temp), &
         offset=[0, 0,proc*size(T1,dim=3)])
-    call create_h5_d(filename, "sigV", [size(sigV,dim=1)], MPI_COMM_WORLD, sigV )
-    call create_h5_d(filename, "sigT", [size(sigT,dim=1)], MPI_COMM_WORLD, sigT )
+    call create_h5_d(filename, "sigV", [size(sigV,dim=1)], MPI_COMM_WORLD,sigV)
+    call create_h5_d(filename, "sigT", [size(sigT,dim=1)], MPI_COMM_WORLD,sigT)
     call create_h5_d(filename, "LV", [size(LV,dim=1)], MPI_COMM_WORLD, LV )
     call create_h5_d(filename, "LT", [size(LT,dim=1)], MPI_COMM_WORLD, LT )
     call create_h5_d(filename, "Vx", [size(Vx,dim=1)], MPI_COMM_WORLD, Vx )

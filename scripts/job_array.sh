@@ -11,7 +11,5 @@ counter=0
 for i in {1..$2}
 do
    let counter++
-   echo $counter >> number.inp
-   mpiexec -n $1 ./turbogen
-   rm number.inp
+   mpiexec -n $1 ./turbogen $counter
 done

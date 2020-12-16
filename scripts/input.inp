@@ -1,3 +1,4 @@
+case:	isotropic	# isotropic turbulence
 ustar:	0.3	# Friction velocity
 wstar:	1.76	# Mixed layer velocity 
 z0:	0.4	# Roughness height 
@@ -12,3 +13,7 @@ Ts:	293.0   # Temperature at surface
 Qe:	50.0	#
 qr:	0.35    # Specific humidity at reference height
 Lv:	2260000.0	# Latent heat of vaporization of water
+sigma:	1.5	# Velocity variance for isotropic case
+L:	200.0	#    "     length scale for iso
+sigmaT: 0.5	# Temperature variance for iso
+LT:	200.0	#    "        length scale for iso

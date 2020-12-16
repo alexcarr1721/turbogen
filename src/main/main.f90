@@ -21,10 +21,8 @@ program main
     use functions
     implicit none
     ! General variables *******************************************************
-    integer(isp)                :: i, proc, nproc, mpi_err, err
-    character(len=80)           :: trash, groupname
-    character(len=8), parameter :: filename = "turbo.h5"
-    logical                     :: file_exists
+    integer(isp)                :: i, proc, nproc, mpi_err
+    character(len=80)           :: trash, groupname, filename
     !**************************************************************************
     ! Frequency space variables ***********************************************
     real(sp), allocatable     :: k1(:), k2(:), k3(:), f1(:), f2(:), f3(:)
@@ -53,26 +51,12 @@ program main
     call MPI_COMM_RANK(MPI_COMM_WORLD, proc, mpi_err)
     !**************************************************************************
 
-    ! err = 0
-    ! if ( proc .eq. 0 ) then
-    !     if(command_argument_count() .ne. 1)THEN
-    !         write (*,*) 'error: command line argument required, stopping.'
-    !         err = 1
-    !     end if
-    ! end if
-    ! call MPI_Bcast(err, 1, MPI_INTEGER, 0, MPI_COMM_WORLD)
-    ! write (*,*) err
-    ! if ( err .ne. 0 ) goto 999
-
-    ! call get_command_argument(1,groupname)
-
-    if ( proc .eq. 0 ) then
-        open(unit = 10, file="number.inp")
-        read(10,*) groupname
-        groupname = trim(groupname)
+    if (command_argument_count() .ne. 1) then
+        groupname = "1"
+    else
+        call get_command_argument(1,groupname)
     end if
-    call MPI_Bcast(groupname, len(groupname), MPI_CHARACTER, 0, &
-        MPI_COMM_WORLD, mpi_err)
+    call MPI_Barrier(MPI_COMM_WORLD, mpi_err)
 
     ! Read input file *********************************************************
     if ( proc .eq. 0 ) then
@@ -171,12 +155,12 @@ program main
     allocate ( temp2(2,2,2))
     allocate ( temp3(2,2,2))
     do i = 1,size(z,dim=1)
-        sigT(i) = 2.0 !sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/L0) &
-            !)**(2.0/3.0) ) ) )
-        LT(i)   = 200.0!2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/L0) )/( 1.0 + &
-            !10.0*(-1.0*z(i)/L0) ) )
-        sigV(i) = 5.0!sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
-        LV(i)   = 300.0!1.8*z(i) + 0.23*zi 
+        sigT(i) = sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/L0) &
+            )**(2.0/3.0) ) ) )
+        LT(i)   = 2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/L0) )/( 1.0 + &
+            10.0*(-1.0*z(i)/L0) ) )
+        sigV(i) = sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
+        LV(i)   = 1.8*z(i) + 0.23*zi 
     end do
     !**************************************************************************
 
@@ -243,43 +227,32 @@ program main
     Temp = real(T1)
 
     ! Write to file ***********************************************************
-    inquire(file="turbo.h5",exist=file_exists)
-    if ( file_exists ) then
-        call create_h5_f(filename, MPI_COMM_WORLD )
-        call create_h5_d(filename, trim(groupname)//"/"//"ux", [size(ux,dim=1),&
-            size(uy,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, ux(:,1,1),&
-            chunked=.true., dim_chunk=shape(ux), &
-            offset=[0, 0, proc*size(ux,dim=3)])
-        call create_h5_d(filename, trim(groupname)//"/"//"uy", [size(uy,dim=1),&
-            size(uy,dim=2), size(uy,dim=3)*nproc], MPI_COMM_WORLD, uy(:,1,1),&
-            chunked=.true., dim_chunk=shape(uy), &
-            offset=[0, 0, proc*size(uy,dim=3)])
-        call create_h5_d(filename, trim(groupname)//"/"//"uz", [size(uz,dim=1),&
-            size(uz,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, uz(:,1,1),&
-            chunked=.true., dim_chunk=shape(uz), &
-            offset=[0, 0, proc*size(uz,dim=3)])
-        call create_h5_d(filename, trim(groupname)//"/"//"T", [size(T1,dim=1),&
-            size(T1,dim=2), size(T1,dim=3)*nproc], MPI_COMM_WORLD, Temp(:,1,1),&
-            chunked=.true., dim_chunk=shape(Temp), &
-            offset=[0, 0,proc*size(T1,dim=3)])
-    else
-        call create_h5_d(filename, trim(groupname)//"/"//"ux", [size(ux,dim=1),&
-            size(uy,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, ux(:,1,1),&
-            chunked=.true., dim_chunk=shape(ux), &
-            offset=[0, 0, proc*size(ux,dim=3)])
-        call create_h5_d(filename, trim(groupname)//"/"//"uy", [size(uy,dim=1),&
-            size(uy,dim=2), size(uy,dim=3)*nproc], MPI_COMM_WORLD, uy(:,1,1),&
-            chunked=.true., dim_chunk=shape(uy), &
-            offset=[0, 0, proc*size(uy,dim=3)])
-        call create_h5_d(filename, trim(groupname)//"/"//"uz", [size(uz,dim=1),&
-            size(uz,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, uz(:,1,1),&
-            chunked=.true., dim_chunk=shape(uz), &
-            offset=[0, 0, proc*size(uz,dim=3)])
-        call create_h5_d(filename, trim(groupname)//"/"//"T", [size(T1,dim=1),&
-            size(T1,dim=2), size(T1,dim=3)*nproc], MPI_COMM_WORLD, Temp(:,1,1),&
-            chunked=.true., dim_chunk=shape(Temp), &
-            offset=[0, 0,proc*size(T1,dim=3)])
-    end if
+    filename = "../data"//"/"//"turbo"//trim(groupname)//".h5"
+    call create_h5_f(filename, MPI_COMM_WORLD )
+    call create_h5_d(filename, "ux", [size(ux,dim=1),&
+        size(uy,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, ux(:,1,1),&
+        chunked=.true., dim_chunk=shape(ux), &
+        offset=[0, 0, proc*size(ux,dim=3)])
+    call create_h5_d(filename, "uy", [size(uy,dim=1),&
+        size(uy,dim=2), size(uy,dim=3)*nproc], MPI_COMM_WORLD, uy(:,1,1),&
+        chunked=.true., dim_chunk=shape(uy), &
+        offset=[0, 0, proc*size(uy,dim=3)])
+    call create_h5_d(filename, "uz", [size(uz,dim=1),&
+        size(uz,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, uz(:,1,1),&
+        chunked=.true., dim_chunk=shape(uz), &
+        offset=[0, 0, proc*size(uz,dim=3)])
+    call create_h5_d(filename, "T", [size(T1,dim=1),&
+        size(T1,dim=2), size(T1,dim=3)*nproc], MPI_COMM_WORLD, Temp(:,1,1),&
+        chunked=.true., dim_chunk=shape(Temp), &
+        offset=[0, 0,proc*size(T1,dim=3)])
+    call create_h5_d(filename, "sigV", [size(sigV,dim=1)], MPI_COMM_WORLD, sigV )
+    call create_h5_d(filename, "sigT", [size(sigT,dim=1)], MPI_COMM_WORLD, sigT )
+    call create_h5_d(filename, "LV", [size(LV,dim=1)], MPI_COMM_WORLD, LV )
+    call create_h5_d(filename, "LT", [size(LT,dim=1)], MPI_COMM_WORLD, LT )
+    call create_h5_d(filename, "Vx", [size(Vx,dim=1)], MPI_COMM_WORLD, Vx )
+    call create_h5_d(filename, "Vy", [size(Vy,dim=1)], MPI_COMM_WORLD, Vy )
+    call create_h5_d(filename, "Vz", [size(Vz,dim=1)], MPI_COMM_WORLD, Vz )
+    call create_h5_d(filename, "Tbar", [size(T,dim=1)], MPI_COMM_WORLD, T )
     !**************************************************************************
 
 

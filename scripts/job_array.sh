@@ -7,9 +7,11 @@
 # Ex: $ ./job_array.sh 16 2
 
 touch number.inp
+counter=0
 for i in {1..$2}
 do
-   echo $i >> number.inp
+   let counter++
+   echo $counter >> number.inp
    mpiexec -n $1 ./turbogen
    rm number.inp
 done

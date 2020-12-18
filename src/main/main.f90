@@ -43,7 +43,7 @@ program main
     real(sp), allocatable     :: LV(:), LT(:), h(:)
     real(sp)                  :: z0, zr, ustar, Tstar, Tr, Gammad, g, cp, Qh
     real(sp)                  :: Qe, rho0, L0, qr, L_v, q_star, wstar, zi, Ts
-    real(sp)                  :: Ltemp, LTtemp, sigtemp, sigTtemp
+    real(sp)                  :: Ltemp, LTtemp, sigtemp, sigTtemp, Lmo, hrel
     !**************************************************************************
 
     ! Get processor information ***********************************************
@@ -72,7 +72,7 @@ program main
         read(10,*) trash, g 
         read(10,*) trash, rho0
         read(10,*) trash, cp
-        read(10,*) trash, Qh 
+        read(10,*) trash, Tstar
         read(10,*) trash, Ts 
         read(10,*) trash, Qe 
         read(10,*) trash, qr 
@@ -81,6 +81,7 @@ program main
         read(10,*) trash, Ltemp 
         read(10,*) trash, sigTtemp 
         read(10,*) trash, LTtemp
+        read(10,*) trash, hrel
         close(10)
     end if
     call MPI_Bcast(case, 80, MPI_CHARACTER, 0, MPI_COMM_WORLD, mpi_err)
@@ -94,7 +95,7 @@ program main
     call MPI_Bcast(g, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(rho0, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(cp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(Qh, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(Tstar, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(Ts, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(Qe, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(qr, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
@@ -103,11 +104,12 @@ program main
     call MPI_Bcast(Ltemp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(sigTtemp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(LTtemp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(hrel, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Barrier(MPI_COMM_WORLD, mpi_err)
     !**************************************************************************
 
     ! Set parameters **********************************************************
-    Tstar = -1.0*Qh/(rho0*cp*ustar)
+    Qh = -1.0*Tstar*rho0*cp*ustar
     L0    = -1.0*(ustar**3)*Ts*rho0*cp/(g*0.4*Qh)
     Gammad = g/cp 
     q_star = -1.0*Qe/(rho0*L_v*ustar)
@@ -182,6 +184,14 @@ program main
             sigV(i) = sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
             LV(i)   = 1.8*z(i) + 0.23*zi 
         end do
+    else if ( case .eq. "stout" ) then
+        Lmo = -1.0*zi/( 0.4 * (wstar/ustar)**3 )
+        sigT(i) = sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/Lmo) &
+            )**(2.0/3.0) ) ) )
+        LT(i)   = 2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/Lmo) )/( 1.0 + &
+            10.0*(-1.0*z(i)/Lmo) ) )
+        sigV(i) = sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
+        LV(i)   = 1.8*z(i) + 0.23*zi
     else
         do i = 1,size(z,dim=1)
             sigT(i) = sigTtemp
@@ -196,6 +206,9 @@ program main
     call most(Vx, Vy, T, h, z, L0, z0, zr, Tr, ustar, Tstar, Gammad, 0.0, qr,&
         q_star)
     Vz = 0.0
+    if ( case .eq. "stout" ) then
+        h = hrel
+    end if
     !**************************************************************************
 
     ! Construct wavenumbers ***************************************************

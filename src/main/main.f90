@@ -186,12 +186,14 @@ program main
         end do
     else if ( case .eq. "stout" ) then
         Lmo = -1.0*zi/( 0.4 * (wstar/ustar)**3 )
-        sigT(i) = sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/Lmo) &
-            )**(2.0/3.0) ) ) )
-        LT(i)   = 2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/Lmo) )/( 1.0 + &
-            10.0*(-1.0*z(i)/Lmo) ) )
-        sigV(i) = sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
-        LV(i)   = 1.8*z(i) + 0.23*zi
+        do i = 1,size(z,dim=1)
+            sigT(i) = sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/Lmo) &
+                )**(2.0/3.0) ) ) )
+            LT(i)   = 2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/Lmo) )/( 1.0 + &
+                10.0*(-1.0*z(i)/Lmo) ) )
+            sigV(i) = sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
+            LV(i)   = 1.8*z(i) + 0.23*zi
+        end do
     else
         do i = 1,size(z,dim=1)
             sigT(i) = sigTtemp
@@ -294,6 +296,10 @@ program main
     call create_h5_d(filename, "Vy", [size(Vy,dim=1)], MPI_COMM_WORLD, Vy )
     call create_h5_d(filename, "Vz", [size(Vz,dim=1)], MPI_COMM_WORLD, Vz )
     call create_h5_d(filename, "Tbar", [size(T,dim=1)], MPI_COMM_WORLD, T )
+    call create_h5_d(filename, "hbar", [size(h,dim=1)], MPI_COMM_WORLD, h )
+    call create_h5_d(filename, "x", [size(x,dim=1)], MPI_COMM_WORLD, x)
+    call create_h5_d(filename, "y", [size(x,dim=1)], MPI_COMM_WORLD, y)
+    call create_h5_d(filename, "z", [size(x,dim=1)], MPI_COMM_WORLD, z)
     !**************************************************************************
 
 

@@ -65,64 +65,6 @@ module functions
 
     end function kronecker
 
-    ! subroutine most(u, v, T, h, z, L, z0, zr, Tr, ustar, Tstar, Gammad, theta,&
-    !     qr, q_star)
-    !     !**********************************************************************
-    !     ! Monin-Obukhov Similarity Theory                                     *
-    !     !   Universal functions chosen according to D. K. Wilson (2001)       *
-    !     !   https://link.springer.com/article/10.1023/A:1018718707419         *
-    !     !                                                                     *
-    !     ! Inputs: ___________________________________________________________ *
-    !     !        |__Variable__|_______________Details________________________|*
-    !     !        |     z      | Altitude                                     |*
-    !     !        |     L      | Obukhov length scale                         |*
-    !     !        |    z0      | Roughness height                             |*
-    !     !        |    zr      | Reference height                             |*
-    !     !        |    Tr      | Reference temperature                        |*
-    !     !        |   ustar    | Shear velocity                               |*
-    !     !        |   Tstar    |                                              |*
-    !     !        |  Gammad    |                                              |*
-    !     !        |   theta    | Direction angle ( in radians )               |*
-    !     !        |     qr     | Reference humidity                           |*
-    !     !        |   qstar    |                                              !*
-    !     !        |____________|______________________________________________|*
-    !     !                                                                     *
-    !     ! Output: ___________________________________________________________ *
-    !     !        |__Variable__|_______________Details________________________|*
-    !     !        |     u      | Long. Velocity as a function of altitude     |*
-    !     !        |     v      | Transverse velocity as a function of altitude|*
-    !     !        |     T      | Temeperature as a function of altitude       |*
-    !     !        |     h      | Humidity                                     |*
-    !     !        |____________|______________________________________________|*
-    !     !**********************************************************************
-    !     implicit none
-    !     real(sp), intent(out)   :: u(:), v(:), T(:), h(:)
-    !     real(sp), intent(in)    :: z(:), L, z0, zr, Tr, ustar, Tstar, Gammad
-    !     real(sp), intent(in)    :: theta, qr, q_star
-    !     ! Local Variables *****************************************************
-    !     integer(isp)            :: i 
-    !     real(sp), parameter     :: kappa    = 0.4
-    !     real(sp), parameter     :: Pt       = 0.95 
-    !     real(sp), parameter     :: gamma_m  = 3.6 
-    !     real(sp), parameter     :: gamma_h  = 7.9
-    !     real(sp)                :: psi_u, psi_T, Vel(size(u,dim=1))
-    !     !**********************************************************************
-
-    !     do i = 1,size(z,dim=1)
-    !         psi_u = ( 1.0 + sqrt(1.0 + gamma_m*(abs(z(i)/L)**(2.0/3.0)) ) & 
-    !             )/( 1.0 + sqrt( 1.0 + gamma_m*(abs(z0/L)**(2.0/3.0)) ) )
-    !         psi_T = ( 1.0 + sqrt(1.0 + gamma_h*(abs(z(i)/L)**(2.0/3.0)) ) & 
-    !             )/( 1.0 + sqrt( 1.0 + gamma_h*(abs(zr/L)**(2.0/3.0)) ) )
-    !         Vel(i) = (ustar/kappa)*( log(z(i)/z0) - 3.0*log(psi_u) )
-    !         T(i) = Tr - (z(i) - zr)*Gammad + (Pt*Tstar/kappa)*(log(z(i)/zr) &
-    !             - 3.0*log( psi_T ) )
-    !         u(i) = Vel(i)*cos(theta) 
-    !         v(i) = Vel(i)*sin(theta)
-    !         h(i) = qr + (Pt*q_star/kappa)*( log(z(i)/zr) - 3.0*log( psi_T ) )
-    !     end do
-
-    ! end subroutine most 
-
     function fourier_space(x)
         !**********************************************************************
         ! Purpose:                                                            *

@@ -1,3 +1,5 @@
+# Case
+case:	cbc
 # Grid
 x:	256
 y:	256
@@ -10,7 +12,7 @@ ymax:	100.0
 zmin:	-100.0
 zmax:	100.0
 # Statistical parameters for isotropic turbulence (deviation and integral scale)
-sigma_v:	1.5
-L_v:	20.0
+sigma_v:	22.2
+L_v:	2.4
 sigma_T:	0.5
-L_T:	20.0
+L_T:	2.4

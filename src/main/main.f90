@@ -22,7 +22,7 @@ program main
     implicit none
     ! General variables *******************************************************
     integer(isp)                :: i, proc, nproc, mpi_err
-    character(len=80)           :: trash, groupname, filename, case
+    character(len=80)           :: trash, groupname, filename, case, mkdirCmd
     !**************************************************************************
     ! Frequency space variables ***********************************************
     real(sp), allocatable     :: k1(:), k2(:), k3(:), f1(:), f2(:), f3(:)
@@ -39,11 +39,7 @@ program main
     integer(isp)              :: xsize, ysize, zsize
     !**************************************************************************
     ! Mean Flow variables *****************************************************
-    ! real(sp), allocatable     :: Vx(:), Vy(:), Vz(:), T(:)
-    ! real(sp), allocatable     :: h(:)
-    ! real(sp)                  :: z0, zr, ustar, Tstar, Tr, Gammad, g, cp, Qh
-    ! real(sp)                  :: Qe, rho0, L0, qr, L_v, q_star, wstar, zi, Ts
-    real(sp)                  :: Ltemp, LTtemp, sigtemp, sigTtemp!, Lmo, hrel
+    real(sp)                  :: Ltemp, LTtemp, sigtemp, sigTtemp
     real(sp)                  :: sigV, sigT, LV, LT
     !**************************************************************************
 
@@ -64,6 +60,8 @@ program main
     if ( proc .eq. 0 ) then
         open(unit = 10, file="input.inp")
         read(10,*) trash
+        read(10,*) trash, case
+        read(10,*) trash
         read(10,*) trash, xsize 
         read(10,*) trash, ysize
         read(10,*) trash, zsize
@@ -81,6 +79,8 @@ program main
         read(10,*) trash, LTtemp
         close(10)
     end if
+    call MPI_Bcast(case, 80, MPI_CHARACTER, 0, MPI_COMM_WORLD, mpi_err)
+    case = trim(case)
     call MPI_Bcast(xmin, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(ymin, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Bcast(zmin, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
@@ -129,54 +129,9 @@ program main
     allocate ( w2(size(uy,dim=3)*nproc,size(uy,dim=1),size(uy,dim=2)/nproc) )
     allocate ( w3(size(uz,dim=3)*nproc,size(uz,dim=1),size(uz,dim=2)/nproc) )
     allocate ( wT(size(T1,dim=3)*nproc,size(T1,dim=1),size(T1,dim=2)/nproc) )
-    ! allocate ( Vx(xsize), Vy(ysize), Vz(zsize) )
-    ! allocate ( h(zsize), T(zsize) )
     allocate ( temp1(2,2,2))
     allocate ( temp2(2,2,2))
     allocate ( temp3(2,2,2))
-    ! if ( case .eq. "isotropic" ) then
-    !     do i = 1,size(z,dim=1)
-    !         sigT(i) = sigTtemp
-    !         LT(i)   = LTtemp
-    !         sigV(i) = sigtemp
-    !         LV(i)   = Ltemp
-    !     end do
-    ! else if ( case .eq. "most" ) then 
-    !     do i = 1,size(z,dim=1)
-    !         sigT(i) = sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/L0) &
-    !             )**(2.0/3.0) ) ) )
-    !         LT(i)   = 2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/L0) )/( 1.0 + &
-    !             10.0*(-1.0*z(i)/L0) ) )
-    !         sigV(i) = sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
-    !         LV(i)   = 1.8*z(i) + 0.23*zi 
-    !     end do
-    ! else if ( case .eq. "stout" ) then
-    !     Lmo = -1.0*zi/( 0.4 * (wstar/ustar)**3 )
-    !     do i = 1,size(z,dim=1)
-    !         sigT(i) = sqrt( (Tstar**2)*( 4.0/( (1.0 + 10.0*(-1.0*z(i)/Lmo) &
-    !             )**(2.0/3.0) ) ) )
-    !         LT(i)   = 2.0*z(i)*( ( 1.0 + 7.0*(-1.0*z(i)/Lmo) )/( 1.0 + &
-    !             10.0*(-1.0*z(i)/Lmo) ) )
-    !         sigV(i) = sqrt( 3.0*(ustar**2) + 0.35*(wstar**2) )
-    !         LV(i)   = 1.8*z(i) + 0.23*zi
-    !     end do
-    ! else
-    !     do i = 1,size(z,dim=1)
-    !         sigT(i) = sigTtemp
-    !         LT(i)   = LTtemp
-    !         sigV(i) = sigtemp
-    !         LV(i)   = Ltemp
-    !     end do
-    ! end if
-    !**************************************************************************
-
-    ! Model mean flow *********************************************************
-    ! call most(Vx, Vy, T, h, z, L0, z0, zr, Tr, ustar, Tstar, Gammad, 0.0, qr,&
-    !     q_star)
-    ! Vz = 0.0
-    ! if ( case .eq. "stout" ) then
-    !     h = hrel
-    ! end if
     !**************************************************************************
 
     ! Construct wavenumbers ***************************************************
@@ -236,7 +191,9 @@ program main
     Temp = real(T1)
 
     ! Write to file ***********************************************************
-    filename = "../data"//"/"//"turbo"//trim(groupname)//".h5"
+    mkdirCmd = 'mkdir -p '//trim(case)
+    call system( mkdirCmd )
+    filename = trim(case)//"/"//"field"//trim(groupname)//".h5"
     call create_h5_f(filename, MPI_COMM_WORLD )
     call create_h5_d(filename, "ux", [size(ux,dim=1),&
         size(uy,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, ux(:,1,1),&
@@ -258,11 +215,6 @@ program main
     call create_h5_d(filename, "sigT", [1], MPI_COMM_WORLD,[sigT])
     call create_h5_d(filename, "LV", [1], MPI_COMM_WORLD, [LV] )
     call create_h5_d(filename, "LT", [1], MPI_COMM_WORLD, [LT] )
-    ! call create_h5_d(filename, "Vx", [size(Vx,dim=1)], MPI_COMM_WORLD, Vx )
-    ! call create_h5_d(filename, "Vy", [size(Vy,dim=1)], MPI_COMM_WORLD, Vy )
-    ! call create_h5_d(filename, "Vz", [size(Vz,dim=1)], MPI_COMM_WORLD, Vz )
-    ! call create_h5_d(filename, "Tbar", [size(T,dim=1)], MPI_COMM_WORLD, T )
-    ! call create_h5_d(filename, "hbar", [size(h,dim=1)], MPI_COMM_WORLD, h )
     call create_h5_d(filename, "x", [size(x,dim=1)], MPI_COMM_WORLD, x)
     call create_h5_d(filename, "y", [size(x,dim=1)], MPI_COMM_WORLD, y)
     call create_h5_d(filename, "z", [size(x,dim=1)], MPI_COMM_WORLD, z)

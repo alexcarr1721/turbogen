@@ -2,7 +2,6 @@
 *.mod
 /misc
 /julia_src/*.pdf
-/fig/*.pdf
 # Any generated files from cmake
 /include
 /lib

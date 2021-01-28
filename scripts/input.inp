@@ -1,20 +1,16 @@
-case:	stout	# isotropic turbulence
-ustar:	0.1	# Friction velocity
-wstar:	0.44	# Mixed layer velocity 
-z0:	0.4	# Roughness height 
-zr:	10.0    # Reference height
-zi:	2000.0	# BL height
-Tr:     288.8   # Temperature at reference height 
-g:	9.81    # Gravity
-rho: 	1.225	# Density
-cp:	1000.0  # Specific heat of air at constant pressure
-Tstar:	-0.5 	# 
-Ts:	293.0   # Temperature at surface
-Qe:	50.0	#
-qr:	0.35    # Specific humidity at reference height
-Lv:	2260000.0	# Latent heat of vaporization of water
-sigma:	1.5	# Velocity variance for isotropic case
-L:	200.0	#    "     length scale for iso
-sigmaT: 0.5	# Temperature variance for iso
-LT:	200.0	#    "        length scale for iso
-hrel:	0.15	# Relative humidity for SonicBAT
+# Grid
+x:	256
+y:	256
+z:	256
+# Bounds of domain
+xmin:	-100.0
+xmax:	100.0
+ymin:	-100.0
+ymax:	100.0
+zmin:	-100.0
+zmax:	100.0
+# Statistical parameters for isotropic turbulence (deviation and integral scale)
+sigma_v:	1.5
+L_v:	20.0
+sigma_T:	0.5
+L_T:	20.0

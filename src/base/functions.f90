@@ -1196,4 +1196,190 @@ module functions
     !     vonKarmanG = 0.296274*(x**(4.0/3.0))*vk2
     ! end function vonKarmanGd
 
+    subroutine read_waveform(filename, p, tau, comm)
+        character(len=*), intent(in)  :: filename
+        real(sp), intent(inout)         :: p(:)
+        real(sp), intent(inout)         :: tau(:)
+        integer(isp), intent(in)      :: comm
+        real(sp)                      :: ptemp(100000), ttemp(100000)
+        real(sp), allocatable         :: ptemp2(:), ttemp2(:)
+        integer(isp) :: mpi_err, nproc, proc, stat, count, i
+    
+        call MPI_COMM_SIZE(MPI_COMM_WORLD, nproc, mpi_err)
+        call MPI_COMM_RANK(MPI_COMM_WORLD, proc, mpi_err)
+    
+        ttemp = 0.0
+        ptemp = 0.0
+        count = 0
+        stat = 0
+        if (proc .eq. 0) then
+            open (unit = 10, file = trim(filename))
+            ! read (10,*) trash
+              do while ( .not. IS_IOSTAT_END(stat))
+                count = count + 1
+                read (10,*,IOSTAT=stat) ttemp(count), ptemp(count)
+                ptemp(count) = ptemp(count)!*47.88_sp ! Convert to pascals
+              end do
+            close(10)
+        end if
+        call MPI_Barrier(comm, mpi_err)
+        call MPI_Bcast(count , 1, MPI_INTEGER, 0, comm, mpi_err)
+        call MPI_Bcast(ptemp, count, MPI_REAL, 0, comm, mpi_err)
+        call MPI_Bcast(ttemp, count, MPI_REAL, 0, comm, mpi_err)
+        allocate ( ptemp2(count-1), ttemp2(count-1))
+        ptemp2(:) = ptemp(1:count-1)
+        ttemp2(:) = ttemp(1:count-1)
+    
+        ! Interpolate
+        tau = (/(( ttemp2(1) + (i-1)*( (ttemp2(count-1) - &
+          ttemp2(1))/(size(tau,dim=1)-1)) &
+          ),i=1,size(tau,dim=1) ) /)
+    
+        call lininterp_sp(ttemp2(1:count-1), ptemp2(1:count-1), &
+          tau, p, 1, 1)
+    
+        call MPI_Barrier(comm, mpi_err)
+    
+    
+    end subroutine read_waveform
+
+    function locate(x,xData)
+      !**********************************************************************
+      ! Purpose: 
+      !           Find the interval in xData that x is located in. The index
+      !           locate is such that xData(locate) <= x <= xData(locate + 1)                                                         
+      !                                                                        
+      ! Inputs:    _________________________________________________________  
+      !           |___Variable___|_______________Purpose____________________|  
+      !           |       x      |   Value to position in range             |
+      !           |     xData    |   Range of values                        |  
+      !           |______________|__________________________________________|  
+      !          
+      ! Outputs:   _________________________________________________________
+      !           |___Variable____|_______________Purpose___________________|  
+      !           |    locate     |  index of interval                      |
+      !           |_______________|_________________________________________|  
+      !                                                                     
+      !**********************************************************************
+      implicit none
+      real(sp), intent(in)  :: x
+      real(sp), intent(in)  :: xData(:)
+      integer(isp)          :: locate
+      ! Local variables *****************************************************
+      integer(isp) :: n, jl, jm, ju
+      logical      :: ascnd 
+      !**********************************************************************
+
+      n = size(xData,dim=1)
+      ascnd = ( xData(n) .ge. xData(1) )
+      jl = 0                      ! Lower limit
+      ju = n+1                    ! Upper limit
+      do while ( ju - jl > 1 )    ! Bisection
+          jm = (ju + jl)/2        ! Compute the midpoint
+          if ( ascnd .eqv. (x .ge. xData(jm) ) ) then
+              jl = jm             ! Replace lower bound
+          else
+              ju = jm             ! Replace upper bound
+          end if
+      end do
+
+      if ( x .eq. xData(1) ) then
+          locate = 1
+      else if ( x .eq. xData(n) ) then
+          locate = n-1
+      else
+          locate = jl
+      end if
+
+    end function locate
+
+    subroutine lininterp_sp(xData, yData, x, y, nn, mm, out_of_bounds)
+        !**********************************************************************
+        ! Purpose: 
+        !           Given points yData on domain xData, interpolate yData onto
+        !           x and save the result in y.                                                        
+        !                                                                        
+        ! Inputs:    _________________________________________________________  
+        !           |___Variable___|_______________Purpose____________________|  
+        !           |     xData    |   Domain                                 |  
+        !           |     yData    |   Range                                  | 
+        !           |       x      |   New Domain                             | 
+        !           |       nn     |   Number of current branch (optional)    |
+        !           |       mm     |   Number of total branches (optional)    |
+        !           | out_of_bounds|   Value to assign to y when x \in xData  |
+        !           |              |   (optional)
+        !           |______________|__________________________________________|  
+        !          
+        ! Outputs:   _________________________________________________________
+        !           |___Variable____|_______________Purpose___________________|  
+        !           |       y       |   New Range                             |
+        !           |_______________|_________________________________________|  
+        !                                                                     
+        !**********************************************************************
+        implicit none
+        real(sp), intent(in)        :: xData(:)
+        real(sp), intent(in)        :: yData(:)
+        real(sp), intent(in)        :: x(:)
+        real(sp), intent(out)       :: y(:)
+        integer(isp), optional      :: nn
+        integer(isp), optional      :: mm
+        real(sp), optional          :: out_of_bounds 
+        ! Local ***************************************************************
+        integer(isp)                :: i, n, m
+        real(sp)                    :: oob, xMin, xMax
+        integer(isp)                :: jl
+        !**********************************************************************
+
+        if ( present(out_of_bounds) ) then
+            oob = out_of_bounds
+        else    
+            oob = -999999999.9_sp
+        end if
+        if ( present(nn) ) then
+            n = nn
+        else
+            n = 1_isp
+        end if
+        if ( present(mm) ) then
+            m = mm
+        else
+            m = 1_isp
+        end if
+
+
+        ! Insert checks for monotonicity of xData
+
+
+        xMin = minval( xData )
+        xMax = maxval( xData )
+        ! Loop through x
+        do i = 1,size(x,dim=1)
+            if ( x(i) .le. xMin ) then
+                if ( n .eq. 1 ) then
+                    y(i) = yData(minloc( xData, dim=1 ))
+                    go to 100
+                else
+                    y(i) = oob 
+                    go to 100
+                end if
+            else if ( x(i) .ge. xMax ) then
+                if ( n .eq. m ) then 
+                    y(i) = yData(maxloc( xData, dim=1 ))
+                    go to 100
+                else
+                    y(i) = oob
+                    go to 100 
+                end if
+            else
+                ! Search table to find location of x in xData domain
+                jl = locate(x(i), xData)
+                ! Interpolate?
+                y(i) = yData(jl) + ( (x(i) - xData(jl) )/(xData(jl+1) &
+                    - xData(jl)) )*(yData(jl+1) - yData(jl))
+            end if
+            100 continue
+        end do
+
+    end subroutine lininterp_sp
+    
 end module functions

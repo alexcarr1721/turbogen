@@ -86,23 +86,22 @@ module functions
         real(sp)                :: fourier_space(size(x,dim=1))
         ! Local variables *****************************************************
         real(sp)                :: f(size(x,dim=1)), fs, df
-        integer(isp)            :: i
+        integer(isp)            :: i, n
         !**********************************************************************
 
-        fs = 1.0*size(x)/( 1.0*abs( x(size(x,dim=1)) - x(1) ) ) ! Sampling freq
-        df = fs/( 1.0*size(x,dim=1) )                           ! Bin width
+        ! So far this has only been tested for arrays of 2**N length
+
+        n = size(x,dim=1)
+        fs = 1.0*n/( 1.0*abs( x(n) - x(1) ) )                                 ! Sampling freq
+        df = fs/( 1.0*n )                                                     ! Bin width
 
         ! Construct frequency array *******************************************
-        do i = 1,size(x,dim=1)
-            if (i .le. int(size(x,dim=1)/2.0) + 1) then
-              f(i) = df*real(i-1)
-            else
-              f(i) = -1.0*f( 2*(int(size(x,dim=1)/2.0) + 1) - i )
-            end if
+        do i = 1,n
+            f(i) = -fs/2.0 + df*real(i-1) + modulo(n,2)*(df/2.0)
         end do
         !**********************************************************************
 
-        fourier_space = f
+        fourier_space = cshift(f,n/2)
 
     end function fourier_space
 
@@ -1204,6 +1203,7 @@ module functions
         real(sp)                      :: ptemp(100000), ttemp(100000)
         real(sp), allocatable         :: ptemp2(:), ttemp2(:)
         integer(isp) :: mpi_err, nproc, proc, stat, count, i
+        real(sp)   :: time_length, start, finish
     
         call MPI_COMM_SIZE(MPI_COMM_WORLD, nproc, mpi_err)
         call MPI_COMM_RANK(MPI_COMM_WORLD, proc, mpi_err)
@@ -1229,14 +1229,31 @@ module functions
         allocate ( ptemp2(count-1), ttemp2(count-1))
         ptemp2(:) = ptemp(1:count-1)
         ttemp2(:) = ttemp(1:count-1)
+
+        time_length = abs( maxval(ttemp2) - minval(ttemp2) )
+        ! loc_max = maxloc(ptemp2,dim=1)
+        ! loc_min = minloc(ptemp2,dim=1)
+
+        ! do i = 1,size(ptemp2,dim=1)
+        !   if ( i .lt. loc_max ) then
+        !     if ( abs(ptemp2(i)) .lt. 0.0070*maxval(ptemp2) ) then
+        !       ptemp2(i) = 0.0
+        !     end if
+        !   else if ( i .gt. loc_min ) then
+        !     if ( abs(ptemp2(i)) .lt. 0.0070*maxval(ptemp2) ) then
+        !       ptemp2(i) = 0.0
+        !     end if
+        !   end if
+        ! end do
     
         ! Interpolate
-        tau = (/(( ttemp2(1) + (i-1)*( (ttemp2(count-1) - &
-          ttemp2(1))/(size(tau,dim=1)-1)) &
+        start = ttemp2(1) - time_length/8.0
+        finish = (ttemp2(count-1) - ttemp2(1)) + time_length/4.0
+        tau = (/(( start + (i-1)*( finish/(size(tau,dim=1)-1)) &
           ),i=1,size(tau,dim=1) ) /)
     
         call lininterp_sp(ttemp2(1:count-1), ptemp2(1:count-1), &
-          tau, p, 1, 1)
+          tau, p, out_of_bounds=0.0)
     
         call MPI_Barrier(comm, mpi_err)
     
@@ -1293,7 +1310,7 @@ module functions
 
     end function locate
 
-    subroutine lininterp_sp(xData, yData, x, y, nn, mm, out_of_bounds)
+    subroutine lininterp_sp(xData, yData, x, y, out_of_bounds)
         !**********************************************************************
         ! Purpose: 
         !           Given points yData on domain xData, interpolate yData onto
@@ -1321,11 +1338,9 @@ module functions
         real(sp), intent(in)        :: yData(:)
         real(sp), intent(in)        :: x(:)
         real(sp), intent(out)       :: y(:)
-        integer(isp), optional      :: nn
-        integer(isp), optional      :: mm
         real(sp), optional          :: out_of_bounds 
         ! Local ***************************************************************
-        integer(isp)                :: i, n, m
+        integer(isp)                :: i
         real(sp)                    :: oob, xMin, xMax
         integer(isp)                :: jl
         !**********************************************************************
@@ -1333,17 +1348,7 @@ module functions
         if ( present(out_of_bounds) ) then
             oob = out_of_bounds
         else    
-            oob = -999999999.9_sp
-        end if
-        if ( present(nn) ) then
-            n = nn
-        else
-            n = 1_isp
-        end if
-        if ( present(mm) ) then
-            m = mm
-        else
-            m = 1_isp
+            oob = 0.0
         end if
 
 
@@ -1355,21 +1360,12 @@ module functions
         ! Loop through x
         do i = 1,size(x,dim=1)
             if ( x(i) .le. xMin ) then
-                if ( n .eq. 1 ) then
-                    y(i) = yData(minloc( xData, dim=1 ))
-                    go to 100
-                else
-                    y(i) = oob 
-                    go to 100
-                end if
+                y(i) = oob 
+                go to 100
+
             else if ( x(i) .ge. xMax ) then
-                if ( n .eq. m ) then 
-                    y(i) = yData(maxloc( xData, dim=1 ))
-                    go to 100
-                else
-                    y(i) = oob
-                    go to 100 
-                end if
+                y(i) = oob
+                go to 100 
             else
                 ! Search table to find location of x in xData domain
                 jl = locate(x(i), xData)

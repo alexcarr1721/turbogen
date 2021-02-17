@@ -30,16 +30,16 @@ program main
     !**************************************************************************
     ! RGM method variables ****************************************************
     complex(sp), allocatable  :: w1(:,:,:), w2(:,:,:), w3(:,:,:), wT(:,:,:)
-    complex(sp), allocatable  :: wTz(:,:,:)
+    ! complex(sp), allocatable  :: wTz(:,:,:)
     complex(sp), allocatable  :: temp1(:,:,:), temp2(:,:,:), temp3(:,:,:)
     !**************************************************************************
     ! Field variables *********************************************************
     complex(sp), allocatable  :: u1(:,:,:), u2(:,:,:), u3(:,:,:), T1(:,:,:)
-    complex(sp), allocatable  :: T1y(:,:,:), T1x(:,:,:), T1z(:,:,:)
-    real(sp), allocatable     :: Tempy(:,:,:), Tempx(:,:,:), Tempz(:,:,:)
+    ! complex(sp), allocatable  :: T1y(:,:,:), T1x(:,:,:)!, T1z(:,:,:)
+    ! real(sp), allocatable     :: Tempy(:,:,:), Tempx(:,:,:), Tempz(:,:,:)
     real(sp), allocatable     :: ux(:,:,:), uy(:,:,:), uz(:,:,:), Temp(:,:,:)
-    real(sp), allocatable     :: cturb(:,:,:), rhoturb(:,:,:), rhoturbx(:,:,:)
-    real(sp), allocatable     :: rhoturby(:,:,:), rhoturbz(:,:,:)
+    real(sp), allocatable     :: cturb(:,:,:), rhoturb(:,:,:)!, rhoturbx(:,:,:)
+    ! real(sp), allocatable     :: rhoturby(:,:,:), rhoturbz(:,:,:)
     real(sp), allocatable     :: x(:), y(:), z(:), tau(:)
     real(sp)                  :: xmin, ymin, zmin, xmax, ymax, zmax
     integer(isp)              :: xsize, ysize, zsize, tsize
@@ -152,13 +152,13 @@ program main
     allocate ( w2(size(uy,dim=3)*nproc,size(uy,dim=1),size(uy,dim=2)/nproc) )
     allocate ( w3(size(uz,dim=3)*nproc,size(uz,dim=1),size(uz,dim=2)/nproc) )
     allocate ( wT(size(T1,dim=3)*nproc,size(T1,dim=1),size(T1,dim=2)/nproc) )
-    allocate ( wTz(size(T1,dim=3)*nproc,size(T1,dim=1),size(T1,dim=2)/nproc) )
-    allocate ( T1z(xsize,ysize,zsize/nproc) )
-    allocate ( T1y(xsize,ysize,zsize/nproc) )
-    allocate ( T1x(xsize,ysize,zsize/nproc) )
-    allocate ( Tempz(xsize,ysize,zsize/nproc) )
-    allocate ( Tempy(xsize,ysize,zsize/nproc) )
-    allocate ( Tempx(xsize,ysize,zsize/nproc) )
+    ! allocate ( wTz(size(T1,dim=3)*nproc,size(T1,dim=1),size(T1,dim=2)/nproc) )
+    ! allocate ( T1z(xsize,ysize,zsize/nproc) )
+    ! allocate ( T1y(xsize,ysize,zsize/nproc) )
+    ! allocate ( T1x(xsize,ysize,zsize/nproc) )
+    ! allocate ( Tempz(xsize,ysize,zsize/nproc) )
+    ! allocate ( Tempy(xsize,ysize,zsize/nproc) )
+    ! allocate ( Tempx(xsize,ysize,zsize/nproc) )
     allocate ( temp1(2,2,2))
     allocate ( temp2(2,2,2))
     allocate ( temp3(2,2,2))
@@ -166,9 +166,9 @@ program main
     allocate ( cbar(xsize), rhobar(xsize), p(tsize, ysize, zsize/nproc) )
     allocate ( pressure(tsize), cturb(xsize, ysize, zsize/nproc) )
     allocate ( rhoturb(xsize, ysize, zsize/nproc) )
-    allocate ( rhoturbx(xsize, ysize, zsize/nproc) )
-    allocate ( rhoturby(xsize, ysize, zsize/nproc) )
-    allocate ( rhoturbz(xsize, ysize, zsize/nproc) )
+    ! allocate ( rhoturbx(xsize, ysize, zsize/nproc) )
+    ! allocate ( rhoturby(xsize, ysize, zsize/nproc) )
+    ! allocate ( rhoturbz(xsize, ysize, zsize/nproc) )
     !**************************************************************************
 
     ! Construct wavenumbers ***************************************************
@@ -185,13 +185,13 @@ program main
         MPI_COMM_WORLD)
     !**************************************************************************
 
-    do k = 1,size(w1,dim=3)
-        do j = 1,size(w1,dim=2)
-            do i = 1,size(w1,dim=1)
-                wTz(i,j,k) = img*k3(i)*wT(i,j,k)
-            end do
-        end do
-    end do
+    ! do k = 1,size(w1,dim=3)
+    !     do j = 1,size(w1,dim=2)
+    !         do i = 1,size(w1,dim=1)
+    !             wTz(i,j,k) = img*k3(i)*wT(i,j,k)
+    !         end do
+    !     end do
+    ! end do
 
     ! Compute iFFT in z ( 1st dimension of w ) ********************************
     call mkl_fft(w1(:,1,1), [size(ux,dim=3)*nproc,size(ux,dim=1),&
@@ -202,8 +202,8 @@ program main
         size(uz,dim=2)/nproc], 1, inverse=.true. )
     call mkl_fft(wT(:,1,1), [size(T1,dim=3)*nproc,size(T1,dim=1),&
         size(T1,dim=2)/nproc], 1, inverse=.true. )
-    call mkl_fft(wTz(:,1,1), [size(T1,dim=3)*nproc,size(T1,dim=1),&
-        size(T1,dim=2)/nproc], 1, inverse=.true. )
+    ! call mkl_fft(wTz(:,1,1), [size(T1,dim=3)*nproc,size(T1,dim=1),&
+    !     size(T1,dim=2)/nproc], 1, inverse=.true. )
     !**************************************************************************
 
     ! Transpose out of place **************************************************
@@ -219,19 +219,19 @@ program main
     call transpose(T1(:,1,1), temp3(:,1,1), wT(:,1,1), [size(T1,dim=1),&
         size(T1,dim=2),size(T1,dim=3)], [2,2,2], [size(T1,dim=3)*nproc,&
         size(T1,dim=1),size(T1,dim=2)/nproc], 231, MPI_COMM_WORLD  )
-    call transpose(T1z(:,1,1), temp3(:,1,1), wTz(:,1,1), [size(T1z,dim=1),&
-        size(T1z,dim=2),size(T1z,dim=3)], [2,2,2], [size(T1z,dim=3)*nproc,&
-        size(T1z,dim=1),size(T1z,dim=2)/nproc], 231, MPI_COMM_WORLD  )
+    ! call transpose(T1z(:,1,1), temp3(:,1,1), wTz(:,1,1), [size(T1z,dim=1),&
+    !     size(T1z,dim=2),size(T1z,dim=3)], [2,2,2], [size(T1z,dim=3)*nproc,&
+    !     size(T1z,dim=1),size(T1z,dim=2)/nproc], 231, MPI_COMM_WORLD  )
     !**************************************************************************
 
-    do k = 1,size(T1y,dim=3)
-        do j = 1,size(T1y,dim=2)
-            do i = 1,size(T1y,dim=1)
-                T1y(i,j,k) = img*k2(j)*T1(i,j,k)
-                T1x(i,j,k) = img*k1(i)*T1(i,j,k)
-            end do 
-        end do 
-    end do
+    ! do k = 1,size(T1y,dim=3)
+    !     do j = 1,size(T1y,dim=2)
+    !         do i = 1,size(T1y,dim=1)
+    !             T1y(i,j,k) = img*k2(j)*T1(i,j,k)
+    !             T1x(i,j,k) = img*k1(i)*T1(i,j,k)
+    !         end do 
+    !     end do 
+    ! end do
 
     ! Compute iFFT in x, y ****************************************************
     call mkl_fft(u1(:,1,1), [size(ux,dim=1),size(ux,dim=2),size(ux,dim=3)],&
@@ -242,21 +242,21 @@ program main
         2, inverse=.true. )
     call mkl_fft(T1(:,1,1), [size(T1,dim=1),size(T1,dim=2),size(T1,dim=3)],&
         2, inverse=.true. )
-    call mkl_fft(T1z(:,1,1), [size(T1z,dim=1),size(T1z,dim=2),size(T1z,dim=3)],&
-        2, inverse=.true. )
-    call mkl_fft(T1y(:,1,1), [size(T1y,dim=1),size(T1y,dim=2),size(T1y,dim=3)],&
-        2, inverse=.true. )
-    call mkl_fft(T1x(:,1,1), [size(T1x,dim=1),size(T1x,dim=2),size(T1x,dim=3)],&
-        2, inverse=.true. )
+    ! call mkl_fft(T1z(:,1,1), [size(T1z,dim=1),size(T1z,dim=2),size(T1z,dim=3)],&
+    !     2, inverse=.true. )
+    ! call mkl_fft(T1y(:,1,1), [size(T1y,dim=1),size(T1y,dim=2),size(T1y,dim=3)],&
+    !     2, inverse=.true. )
+    ! call mkl_fft(T1x(:,1,1), [size(T1x,dim=1),size(T1x,dim=2),size(T1x,dim=3)],&
+    !     2, inverse=.true. )
     !**************************************************************************
 
     ux = real(u1)
     uy = real(u2)
     uz = real(u3)
     Temp = real(T1)
-    Tempx = real(T1x)
-    Tempy = real(T1y)
-    Tempz = real(T1z)
+    ! Tempx = real(T1x)
+    ! Tempy = real(T1y)
+    ! Tempz = real(T1z)
 
     ! Set mean values
     c0 = 343.0 ! m/s
@@ -296,12 +296,12 @@ program main
                 ! fluctuations ************************************************
                 rhoturb(i,j,k) = rhoturb(i,j,k) - rhobar(i)
                 cturb(i,j,k)   = cturb(i,j,k) - cbar(i)
-                rhoturbx(i,j,k) = (-1.0/( Tbar(i) + Temp(i,j,k) ))*( &
-                    (pdry/287.058) + (pvap/461.495) )*Tempx(i,j,k)
-                rhoturby(i,j,k) = (-1.0/( Tbar(i) + Temp(i,j,k) ))*( &
-                    (pdry/287.058) + (pvap/461.495) )*Tempy(i,j,k)
-                rhoturbz(i,j,k) = (-1.0/( Tbar(i) + Temp(i,j,k) ))*( &
-                    (pdry/287.058) + (pvap/461.495) )*Tempz(i,j,k)
+                ! rhoturbx(i,j,k) = (-1.0/( Tbar(i) + Temp(i,j,k) ))*( &
+                !     (pdry/287.058) + (pvap/461.495) )*Tempx(i,j,k)
+                ! rhoturby(i,j,k) = (-1.0/( Tbar(i) + Temp(i,j,k) ))*( &
+                !     (pdry/287.058) + (pvap/461.495) )*Tempy(i,j,k)
+                ! rhoturbz(i,j,k) = (-1.0/( Tbar(i) + Temp(i,j,k) ))*( &
+                !     (pdry/287.058) + (pvap/461.495) )*Tempz(i,j,k)
             end do 
         end do
     end do
@@ -351,18 +351,18 @@ program main
         size(rhoturb,dim=2), size(rhoturb,dim=3)*nproc], MPI_COMM_WORLD, &
         rhoturb(:,1,1), chunked=.true., dim_chunk=shape(rhoturb), &
         offset=[0, 0,proc*size(rhoturb,dim=3)])
-    call create_h5_d(filename, "turb/drhodx1", [size(rhoturbx,dim=1),&
-        size(rhoturbx,dim=2), size(rhoturbx,dim=3)*nproc], MPI_COMM_WORLD, &
-        rhoturbx(:,1,1), chunked=.true., dim_chunk=shape(rhoturbx), &
-        offset=[0, 0,proc*size(rhoturbx,dim=3)])
-    call create_h5_d(filename, "turb/drhodx2", [size(rhoturby,dim=1),&
-        size(rhoturby,dim=2), size(rhoturby,dim=3)*nproc], MPI_COMM_WORLD, &
-        rhoturby(:,1,1), chunked=.true., dim_chunk=shape(rhoturby), &
-        offset=[0, 0,proc*size(rhoturby,dim=3)])
-    call create_h5_d(filename, "turb/drhodx3", [size(rhoturbz,dim=1),&
-        size(rhoturbz,dim=2), size(rhoturbz,dim=3)*nproc], MPI_COMM_WORLD, &
-        rhoturbz(:,1,1), chunked=.true., dim_chunk=shape(rhoturbz), &
-        offset=[0, 0,proc*size(rhoturbz,dim=3)])
+    ! call create_h5_d(filename, "turb/drhodx1", [size(rhoturbx,dim=1),&
+    !     size(rhoturbx,dim=2), size(rhoturbx,dim=3)*nproc], MPI_COMM_WORLD, &
+    !     rhoturbx(:,1,1), chunked=.true., dim_chunk=shape(rhoturbx), &
+    !     offset=[0, 0,proc*size(rhoturbx,dim=3)])
+    ! call create_h5_d(filename, "turb/drhodx2", [size(rhoturby,dim=1),&
+    !     size(rhoturby,dim=2), size(rhoturby,dim=3)*nproc], MPI_COMM_WORLD, &
+    !     rhoturby(:,1,1), chunked=.true., dim_chunk=shape(rhoturby), &
+    !     offset=[0, 0,proc*size(rhoturby,dim=3)])
+    ! call create_h5_d(filename, "turb/drhodx3", [size(rhoturbz,dim=1),&
+    !     size(rhoturbz,dim=2), size(rhoturbz,dim=3)*nproc], MPI_COMM_WORLD, &
+    !     rhoturbz(:,1,1), chunked=.true., dim_chunk=shape(rhoturbz), &
+    !     offset=[0, 0,proc*size(rhoturbz,dim=3)])
     call create_h5_d(filename, "mean/sigV", [1], &
         MPI_COMM_WORLD,[sigV])
     call create_h5_d(filename, "mean/sigT", [1], &

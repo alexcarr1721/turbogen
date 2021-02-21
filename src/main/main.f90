@@ -140,14 +140,14 @@ program main
     ! Initialize wavenumber and spatial arrays ********************************
     allocate ( k1(xsize), k2(ysize), k3(zsize) )
     allocate ( f1(xsize), f2(ysize), f3(zsize) )
-    allocate ( ux(xsize,ysize,zsize/nproc) )
-    allocate ( uy(xsize,ysize,zsize/nproc) )
-    allocate ( uz(xsize,ysize,zsize/nproc) )
-    allocate ( Temp(xsize,ysize,zsize/nproc) )
-    allocate ( u1(xsize,ysize,zsize/nproc) )
-    allocate ( u2(xsize,ysize,zsize/nproc) )
-    allocate ( u3(xsize,ysize,zsize/nproc) )
-    allocate ( T1(xsize,ysize,zsize/nproc) )
+    allocate ( ux(ysize,zsize,xsize/nproc) )
+    allocate ( uy(ysize,zsize,xsize/nproc) )
+    allocate ( uz(ysize,zsize,xsize/nproc) )
+    allocate ( Temp(ysize,zsize,xsize/nproc) )
+    allocate ( u1(ysize,zsize,xsize/nproc) )
+    allocate ( u2(ysize,zsize,xsize/nproc) )
+    allocate ( u3(ysize,zsize,xsize/nproc) )
+    allocate ( T1(ysize,zsize,xsize/nproc) )
     allocate ( w1(size(ux,dim=3)*nproc,size(ux,dim=1),size(ux,dim=2)/nproc) )
     allocate ( w2(size(uy,dim=3)*nproc,size(uy,dim=1),size(uy,dim=2)/nproc) )
     allocate ( w3(size(uz,dim=3)*nproc,size(uz,dim=1),size(uz,dim=2)/nproc) )
@@ -164,8 +164,8 @@ program main
     allocate ( temp3(2,2,2))
     allocate ( meanzeros(xsize, ysize), hbar(xsize), pbar(xsize), Tbar(xsize) )
     allocate ( cbar(xsize), rhobar(xsize), p(tsize, ysize, zsize/nproc) )
-    allocate ( pressure(tsize), cturb(xsize, ysize, zsize/nproc) )
-    allocate ( rhoturb(xsize, ysize, zsize/nproc) )
+    allocate ( pressure(tsize), cturb(ysize, zsize, xsize/nproc) )
+    allocate ( rhoturb(ysize, zsize, xsize/nproc) )
     ! allocate ( rhoturbx(xsize, ysize, zsize/nproc) )
     ! allocate ( rhoturby(xsize, ysize, zsize/nproc) )
     ! allocate ( rhoturbz(xsize, ysize, zsize/nproc) )
@@ -181,7 +181,7 @@ program main
     !**************************************************************************
 
     ! Construct w *************************************************************
-    call construct_w(w1, w2, w3, wT, k1, k2, k3, sigV, LV, sigT, LT, "ii", &
+    call construct_w(w1, w2, w3, wT, k1, k2, k3, sigV, LV, sigT, LT, "ii", &  ! y is the last index of w, that is why k2 is considered kz here
         MPI_COMM_WORLD)
     !**************************************************************************
 
@@ -193,7 +193,7 @@ program main
     !     end do
     ! end do
 
-    ! Compute iFFT in z ( 1st dimension of w ) ********************************
+    ! Compute iFFT in x ( 1st dimension of w ) ********************************
     call mkl_fft(w1(:,1,1), [size(ux,dim=3)*nproc,size(ux,dim=1),&
         size(ux,dim=2)/nproc], 1, inverse=.true. )
     call mkl_fft(w2(:,1,1), [size(uy,dim=3)*nproc,size(uy,dim=1),&
@@ -233,7 +233,7 @@ program main
     !     end do 
     ! end do
 
-    ! Compute iFFT in x, y ****************************************************
+    ! Compute iFFT in z, y ****************************************************
     call mkl_fft(u1(:,1,1), [size(ux,dim=1),size(ux,dim=2),size(ux,dim=3)],&
         2, inverse=.true. )
     call mkl_fft(u2(:,1,1), [size(uy,dim=1),size(uy,dim=2),size(uy,dim=3)],&
@@ -285,17 +285,17 @@ program main
         do j = 1,size(ux,dim=2)
             do i = 1,size(ux,dim=1)
                 ! Total field *************************************************
-                psat = 6.1078_sp * 10.0_sp**(7.5_sp*(Tbar(i) + &
-                    Temp(i,j,k))/( (Tbar(i) + Temp(i,j,k) ) + 237.3_sp))
-                pvap = psat*hbar(i)
+                psat = 6.1078_sp * 10.0_sp**(7.5_sp*(Tbar(zglobal) + &
+                    Temp(i,j,k))/( (Tbar(zglobal) + Temp(i,j,k) ) + 237.3_sp))
+                pvap = psat*hbar(zglobal)
                 pdry = p0 - pvap 
-                rhoturb(i,j,k) = pdry/(287.058*( Tbar(i) + Temp(i,j,k) ) ) + &
-                    pvap/(461.495*( Tbar(i) + Temp(i,j,k) ) )
+                rhoturb(i,j,k) = pdry/(287.058*( Tbar(zglobal) + Temp(i,j,k) ) ) + &
+                    pvap/(461.495*( Tbar(zglobal) + Temp(i,j,k) ) )
                 cturb(i,j,k) = sqrt( 1.4*p0/rhoturb(i,j,k) )
                 ! Subtract mean flow from turbulent variables to get true *****
                 ! fluctuations ************************************************
-                rhoturb(i,j,k) = rhoturb(i,j,k) - rhobar(i)
-                cturb(i,j,k)   = cturb(i,j,k) - cbar(i)
+                rhoturb(i,j,k) = rhoturb(i,j,k) - rhobar(zglobal)
+                cturb(i,j,k)   = cturb(i,j,k) - cbar(zglobal)
                 ! rhoturbx(i,j,k) = (-1.0/( Tbar(i) + Temp(i,j,k) ))*( &
                 !     (pdry/287.058) + (pvap/461.495) )*Tempx(i,j,k)
                 ! rhoturby(i,j,k) = (-1.0/( Tbar(i) + Temp(i,j,k) ))*( &
@@ -321,9 +321,9 @@ program main
     call system( mkdirCmd )
     filename = trim(case)//"/"//"field"//trim(groupname)//".h5"
     call create_h5_f(filename, MPI_COMM_WORLD, &
-        (/"ic         ","grid       ","turb       ","mean       ",&
+        (/"pressure   ","grid       ","turb       ","mean       ",&
         "microphones","routines   "/) )
-    call create_h5_d(filename, "ic/p", [size(p,dim=1),&
+    call create_h5_d(filename, "pressure/initial", [size(p,dim=1),&
         size(p,dim=2), size(p,dim=3)*nproc], MPI_COMM_WORLD, p(:,1,1),&
         chunked=.true., dim_chunk=shape(p), &
         offset=[0, 0, proc*size(p,dim=3)])
@@ -402,6 +402,8 @@ program main
         MPI_COMM_WORLD, [1.0] )
     call create_h5_d(filename,"routines/coupling",(/1/), &
         MPI_COMM_WORLD, [1.0] )
+    call create_h5_d(filename,"routines/boundarycondtions",(/1/), &
+        MPI_COMM_WORLD, [0.0] )
     call create_h5_d(filename,"microphones/location",(/3, count-1/), &
         MPI_COMM_WORLD, mic_loc(:,1))
     call create_h5_d(filename,"propagation_direction",(/1/), MPI_COMM_WORLD,&

@@ -2,6 +2,8 @@
 *.mod
 /misc
 /julia_src/*.pdf
+/data
+!/data/README.md
 # Any generated files from cmake
 /include
 /lib

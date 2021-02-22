@@ -402,7 +402,7 @@ program main
         MPI_COMM_WORLD, [1.0] )
     call create_h5_d(filename,"routines/coupling",(/1/), &
         MPI_COMM_WORLD, [1.0] )
-    call create_h5_d(filename,"routines/boundarycondtions",(/1/), &
+    call create_h5_d(filename,"routines/boundaryconditions",(/1/), &
         MPI_COMM_WORLD, [0.0] )
     call create_h5_d(filename,"microphones/location",(/3, count-1/), &
         MPI_COMM_WORLD, mic_loc(:,1))

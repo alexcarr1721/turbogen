@@ -1247,8 +1247,8 @@ module functions
         ! end do
     
         ! Interpolate
-        start = ttemp2(1) - time_length/8.0
-        finish = (ttemp2(count-1) - ttemp2(1)) + time_length/4.0
+        start = ttemp2(1)
+        finish = (ttemp2(count-1) - ttemp2(1)) + time_length/3.0
         tau = (/(( start + (i-1)*( finish/(size(tau,dim=1)-1)) &
           ),i=1,size(tau,dim=1) ) /)
     

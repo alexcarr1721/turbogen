@@ -1218,7 +1218,7 @@ module functions
               do while ( .not. IS_IOSTAT_END(stat))
                 count = count + 1
                 read (10,*,IOSTAT=stat) ttemp(count), ptemp(count)
-                ptemp(count) = ptemp(count)!*47.88_sp ! Convert to pascals
+                ptemp(count) = ptemp(count)
               end do
             close(10)
         end if

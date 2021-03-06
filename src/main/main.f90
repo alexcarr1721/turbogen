@@ -314,6 +314,14 @@ program main
             p(:,i,j) = pressure(:)
         end do 
     end do
+
+    ! ! Write to text file
+    ! open(unit=10, file="F18_waveform.dat")
+    ! write (10,*) "t (s)   ", "pressure (pa)   ", "sampling frequency (Hz) = ", size(tau,1)/( tau(size(tau,1)) - tau(1) )
+    ! do i = 1,size(tau,dim=1)
+    !     write (10,*) tau(i), p(i,1,1)
+    ! end do
+    ! close(10)
     !**************************************************************************
 
     ! Write to file ***********************************************************

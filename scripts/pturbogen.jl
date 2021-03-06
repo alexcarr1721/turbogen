@@ -240,7 +240,7 @@ for i ∈ successful_sims
     range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₃,1))
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
     sitp = scale(itp, range1, range2, range3 )
-    T_x2x3 = (sitp(x₂, x₃, (x₁[1]+x₁[size(x₁,1)])/2.0).^2)
+    T_x2x3 = sitp(x₂, x₃, (x₁[1]+x₁[size(x₁,1)])/2.0)
     dset_T_x2x3[:,:,j] = T_x2x3
 
     # A3D = h5read(string("field",i,".h5"), "pressure/maximum", (:,x3half-2:x3half+3,:))
@@ -285,7 +285,7 @@ for i ∈ successful_sims
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[1], stop=x₁[size(x₁,1)], length=size(x₁,1))
     sitp = scale(itp, range1, range2, range3 )
-    T_x2x1 = (sitp(x₂, (x₃[1]+x₃[size(x₃,1)])/2.0, x₁).^2)
+    T_x2x1 = sitp(x₂, (x₃[1]+x₃[size(x₃,1)])/2.0, x₁)
     dset_T_x2x1[:,:,j] = T_x2x1
     ############################################################################
 

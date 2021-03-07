@@ -3,7 +3,7 @@
 ########################################
 
 # Add the source files
-SET(main_src ${SRCMAIN}/main.f90)
+SET(main_src ${SRCMAIN}/main2.f90)
 
 # Define the executable in terms of the source files
 ADD_EXECUTABLE(${MAINEXE} ${main_src})

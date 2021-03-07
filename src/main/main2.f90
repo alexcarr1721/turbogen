@@ -25,15 +25,15 @@ program main
     integer(isp)              :: zglobal
     character(len=80)         :: trash, groupname, filename, case, mkdirCmd
     !**************************************************************************
-    ! Frequency space variables ***********************************************
-    real(sp), allocatable     :: k1(:), k2(:), k3(:), f1(:), f2(:), f3(:)
-    !**************************************************************************
-    ! RGM method variables ****************************************************
-    complex(sp), allocatable  :: w1(:,:,:), w2(:,:,:), w3(:,:,:), wT(:,:,:)
-    complex(sp), allocatable  :: temp1(:,:,:), temp2(:,:,:), temp3(:,:,:)
-    !**************************************************************************
-    ! Field variables *********************************************************
-    complex(sp), allocatable  :: u1(:,:,:), u2(:,:,:), u3(:,:,:), T1(:,:,:)
+    ! ! Frequency space variables ***********************************************
+    ! real(sp), allocatable     :: k1(:), k2(:), k3(:), f1(:), f2(:), f3(:)
+    ! !**************************************************************************
+    ! ! RGM method variables ****************************************************
+    ! complex(sp), allocatable  :: w1(:,:,:), w2(:,:,:), w3(:,:,:), wT(:,:,:)
+    ! complex(sp), allocatable  :: temp1(:,:,:), temp2(:,:,:), temp3(:,:,:)
+    ! !**************************************************************************
+    ! ! Field variables *********************************************************
+    ! complex(sp), allocatable  :: u1(:,:,:), u2(:,:,:), u3(:,:,:), T1(:,:,:)
     real(sp), allocatable     :: ux(:,:,:), uy(:,:,:), uz(:,:,:), Temp(:,:,:)
     real(sp), allocatable     :: cturb(:,:,:), rhoturb(:,:,:)
     real(sp), allocatable     :: x(:), y(:), z(:), tau(:)
@@ -134,85 +134,87 @@ program main
     !**************************************************************************
 
     ! Initialize wavenumber and spatial arrays ********************************
-    allocate ( k1(xsize), k2(ysize), k3(zsize) )
-    allocate ( f1(xsize), f2(ysize), f3(zsize) )
+    ! allocate ( k1(xsize), k2(ysize), k3(zsize) )
+    ! allocate ( f1(xsize), f2(ysize), f3(zsize) )
     allocate ( ux(ysize,zsize,xsize/nproc) )
     allocate ( uy(ysize,zsize,xsize/nproc) )
     allocate ( uz(ysize,zsize,xsize/nproc) )
     allocate ( Temp(ysize,zsize,xsize/nproc) )
-    allocate ( u1(ysize,zsize,xsize/nproc) )
-    allocate ( u2(ysize,zsize,xsize/nproc) )
-    allocate ( u3(ysize,zsize,xsize/nproc) )
-    allocate ( T1(ysize,zsize,xsize/nproc) )
-    allocate ( w1(size(ux,dim=3)*nproc,size(ux,dim=1),size(ux,dim=2)/nproc) )
-    allocate ( w2(size(uy,dim=3)*nproc,size(uy,dim=1),size(uy,dim=2)/nproc) )
-    allocate ( w3(size(uz,dim=3)*nproc,size(uz,dim=1),size(uz,dim=2)/nproc) )
-    allocate ( wT(size(T1,dim=3)*nproc,size(T1,dim=1),size(T1,dim=2)/nproc) )
-    allocate ( temp1(2,2,2))
-    allocate ( temp2(2,2,2))
-    allocate ( temp3(2,2,2))
+    ! allocate ( u1(ysize,zsize,xsize/nproc) )
+    ! allocate ( u2(ysize,zsize,xsize/nproc) )
+    ! allocate ( u3(ysize,zsize,xsize/nproc) )
+    ! allocate ( T1(ysize,zsize,xsize/nproc) )
+    ! allocate ( w1(size(ux,dim=3)*nproc,size(ux,dim=1),size(ux,dim=2)/nproc) )
+    ! allocate ( w2(size(uy,dim=3)*nproc,size(uy,dim=1),size(uy,dim=2)/nproc) )
+    ! allocate ( w3(size(uz,dim=3)*nproc,size(uz,dim=1),size(uz,dim=2)/nproc) )
+    ! allocate ( wT(size(T1,dim=3)*nproc,size(T1,dim=1),size(T1,dim=2)/nproc) )
+    ! allocate ( temp1(2,2,2))
+    ! allocate ( temp2(2,2,2))
+    ! allocate ( temp3(2,2,2))
     allocate ( meanzeros(xsize, ysize), hbar(xsize), pbar(xsize), Tbar(xsize) )
     allocate ( cbar(xsize), rhobar(xsize), p(tsize, ysize, zsize/nproc) )
     allocate ( pressure(tsize), cturb(ysize, zsize, xsize/nproc) )
     allocate ( rhoturb(ysize, zsize, xsize/nproc) )
     !**************************************************************************
 
-    ! Construct wavenumbers ***************************************************
-    f1 = fourier_space(x)
-    f2 = fourier_space(y)
-    f3 = fourier_space(z)
-    k1 = 2.0*pi*f1
-    k2 = 2.0*pi*f2 
-    k3 = 2.0*pi*f3
-    if ( proc .eq. 0 ) write (*,*) f1
+    ! ! Construct wavenumbers ***************************************************
+    ! f1 = fourier_space(x)
+    ! f2 = fourier_space(y)
+    ! f3 = fourier_space(z)
+    ! k1 = 2.0*pi*f1
+    ! k2 = 2.0*pi*f2 
+    ! k3 = 2.0*pi*f3
+    ! if ( proc .eq. 0 ) write (*,*) f1
     !**************************************************************************
 
-    ! Construct w *************************************************************
-    call construct_w(w1, w2, w3, wT, k1, k2, k3, sigV, LV, sigT, LT, "ii", &  ! y is the last index of w, that is why k2 is considered kz here
-        MPI_COMM_WORLD)
+    ! ! Construct w *************************************************************
+    ! call construct_w(w1, w2, w3, wT, k1, k2, k3, sigV, LV, sigT, LT, "ii", &  ! y is the last index of w, that is why k2 is considered kz here
+    !     MPI_COMM_WORLD)
     !**************************************************************************
 
-    ! Compute iFFT in x ( 1st dimension of w ) ********************************
-    call mkl_fft(w1(:,1,1), [size(ux,dim=3)*nproc,size(ux,dim=1),&
-        size(ux,dim=2)/nproc], 1, inverse=.true. )
-    call mkl_fft(w2(:,1,1), [size(uy,dim=3)*nproc,size(uy,dim=1),&
-        size(uy,dim=2)/nproc], 1, inverse=.true. )
-    call mkl_fft(w3(:,1,1), [size(uz,dim=3)*nproc,size(uz,dim=1),&
-        size(uz,dim=2)/nproc], 1, inverse=.true. )
-    call mkl_fft(wT(:,1,1), [size(T1,dim=3)*nproc,size(T1,dim=1),&
-        size(T1,dim=2)/nproc], 1, inverse=.true. )
-    !**************************************************************************
+    ! ! Compute iFFT in x ( 1st dimension of w ) ********************************
+    ! call mkl_fft(w1(:,1,1), [size(ux,dim=3)*nproc,size(ux,dim=1),&
+    !     size(ux,dim=2)/nproc], 1, inverse=.true. )
+    ! call mkl_fft(w2(:,1,1), [size(uy,dim=3)*nproc,size(uy,dim=1),&
+    !     size(uy,dim=2)/nproc], 1, inverse=.true. )
+    ! call mkl_fft(w3(:,1,1), [size(uz,dim=3)*nproc,size(uz,dim=1),&
+    !     size(uz,dim=2)/nproc], 1, inverse=.true. )
+    ! call mkl_fft(wT(:,1,1), [size(T1,dim=3)*nproc,size(T1,dim=1),&
+    !     size(T1,dim=2)/nproc], 1, inverse=.true. )
+    ! !**************************************************************************
 
-    ! Transpose out of place **************************************************
-    call transpose(u1(:,1,1), temp1(:,1,1), w1(:,1,1), [size(ux,dim=1),&
-        size(ux,dim=2),size(ux,dim=3)], [2,2,2], [size(ux,dim=3)*nproc,&
-        size(ux,dim=1),size(ux,dim=2)/nproc], 231, MPI_COMM_WORLD )
-    call transpose(u2(:,1,1), temp2(:,1,1), w2(:,1,1), [size(uy,dim=1),&
-        size(uy,dim=2),size(uy,dim=3)], [2,2,2], [size(uy,dim=3)*nproc,&
-        size(uy,dim=1),size(uy,dim=2)/nproc], 231, MPI_COMM_WORLD  )
-    call transpose(u3(:,1,1), temp3(:,1,1), w3(:,1,1), [size(uz,dim=1),&
-        size(uz,dim=2),size(uz,dim=3)], [2,2,2], [size(uz,dim=3)*nproc,&
-        size(uz,dim=1),size(uz,dim=2)/nproc], 231, MPI_COMM_WORLD  )
-    call transpose(T1(:,1,1), temp3(:,1,1), wT(:,1,1), [size(T1,dim=1),&
-        size(T1,dim=2),size(T1,dim=3)], [2,2,2], [size(T1,dim=3)*nproc,&
-        size(T1,dim=1),size(T1,dim=2)/nproc], 231, MPI_COMM_WORLD  )
-    !**************************************************************************
+    ! ! Transpose out of place **************************************************
+    ! call transpose(u1(:,1,1), temp1(:,1,1), w1(:,1,1), [size(ux,dim=1),&
+    !     size(ux,dim=2),size(ux,dim=3)], [2,2,2], [size(ux,dim=3)*nproc,&
+    !     size(ux,dim=1),size(ux,dim=2)/nproc], 231, MPI_COMM_WORLD )
+    ! call transpose(u2(:,1,1), temp2(:,1,1), w2(:,1,1), [size(uy,dim=1),&
+    !     size(uy,dim=2),size(uy,dim=3)], [2,2,2], [size(uy,dim=3)*nproc,&
+    !     size(uy,dim=1),size(uy,dim=2)/nproc], 231, MPI_COMM_WORLD  )
+    ! call transpose(u3(:,1,1), temp3(:,1,1), w3(:,1,1), [size(uz,dim=1),&
+    !     size(uz,dim=2),size(uz,dim=3)], [2,2,2], [size(uz,dim=3)*nproc,&
+    !     size(uz,dim=1),size(uz,dim=2)/nproc], 231, MPI_COMM_WORLD  )
+    ! call transpose(T1(:,1,1), temp3(:,1,1), wT(:,1,1), [size(T1,dim=1),&
+    !     size(T1,dim=2),size(T1,dim=3)], [2,2,2], [size(T1,dim=3)*nproc,&
+    !     size(T1,dim=1),size(T1,dim=2)/nproc], 231, MPI_COMM_WORLD  )
+    ! !**************************************************************************
 
-    ! Compute iFFT in z, y ****************************************************
-    call mkl_fft(u1(:,1,1), [size(ux,dim=1),size(ux,dim=2),size(ux,dim=3)],&
-        2, inverse=.true. )
-    call mkl_fft(u2(:,1,1), [size(uy,dim=1),size(uy,dim=2),size(uy,dim=3)],&
-        2, inverse=.true. )
-    call mkl_fft(u3(:,1,1), [size(ux,dim=1),size(ux,dim=2),size(ux,dim=3)],&
-        2, inverse=.true. )
-    call mkl_fft(T1(:,1,1), [size(T1,dim=1),size(T1,dim=2),size(T1,dim=3)],&
-        2, inverse=.true. )
-    !**************************************************************************
+    ! ! Compute iFFT in z, y ****************************************************
+    ! call mkl_fft(u1(:,1,1), [size(ux,dim=1),size(ux,dim=2),size(ux,dim=3)],&
+    !     2, inverse=.true. )
+    ! call mkl_fft(u2(:,1,1), [size(uy,dim=1),size(uy,dim=2),size(uy,dim=3)],&
+    !     2, inverse=.true. )
+    ! call mkl_fft(u3(:,1,1), [size(ux,dim=1),size(ux,dim=2),size(ux,dim=3)],&
+    !     2, inverse=.true. )
+    ! call mkl_fft(T1(:,1,1), [size(T1,dim=1),size(T1,dim=2),size(T1,dim=3)],&
+    !     2, inverse=.true. )
+    ! !**************************************************************************
 
-    ux = real(u1)
-    uy = real(u2)
-    uz = real(u3)
-    Temp = real(T1)
+    call Frehlich(ux, uy, uz, x, y, z, sigV, LV, sigT, LT, MPI_COMM_WORLD)
+
+    ! ux = real(u1)
+    ! uy = real(u2)
+    ! uz = real(u3)
+    Temp = 0.0 !real(T1)
 
     ! Set mean values
     c0 = 343.0 ! m/s
@@ -297,10 +299,10 @@ program main
         size(uz,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, uz(:,1,1),&
         chunked=.true., dim_chunk=shape(uz), &
         offset=[0, 0, proc*size(uz,dim=3)])
-    call create_h5_d(filename, "turb/temperature", [size(T1,dim=1),&
-        size(T1,dim=2), size(T1,dim=3)*nproc], MPI_COMM_WORLD, Temp(:,1,1),&
+    call create_h5_d(filename, "turb/temperature", [size(Temp,dim=1),&
+        size(Temp,dim=2), size(Temp,dim=3)*nproc], MPI_COMM_WORLD, Temp(:,1,1),&
         chunked=.true., dim_chunk=shape(Temp), &
-        offset=[0, 0,proc*size(T1,dim=3)])
+        offset=[0, 0,proc*size(Temp,dim=3)])
     call create_h5_d(filename, "turb/c", [size(cturb,dim=1),&
         size(cturb,dim=2), size(cturb,dim=3)*nproc], MPI_COMM_WORLD, &
         cturb(:,1,1), chunked=.true., dim_chunk=shape(cturb), &
@@ -369,8 +371,7 @@ program main
     !**************************************************************************
 
 
-    deallocate ( k1, k2, k3, f1, f2, f3, ux, uy, uz, Temp, u1, u2, u3, T1, &
-        w1, w2, w3, wT, x, y, z )
+    deallocate ( ux, uy, uz, Temp, x, y, z )
     call MPI_FINALIZE(mpi_err)
 
 end program main

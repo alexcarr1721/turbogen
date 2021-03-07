@@ -178,27 +178,27 @@ x₂  = h5read(filename, "grid/x2")
 x₃  = h5read(filename, "grid/x3")
 
 # Contour plots ################################################################
-ux1_x2x3_plot = heatmap(x₂, x₃, ux1_x2x3[:,:,1], xlabel="x₂ [m]",
+ux1_x2x3_plot = heatmap(x₃, x₂, ux1_x2x3[:,:,1], xlabel="x₂ [m]",
     ylabel="x₃ [m]", colorbar_title="uₓ₁ [m/s]")
 display(ux1_x2x3_plot)
 savefig(ux1_x2x3_plot,"fig/ux1_x2x3_heatmap.pdf")
 
-ux2_x2x3_plot = heatmap(x₂, x₃, ux2_x2x3[:,:,1], xlabel="x₂ [m]",
+ux2_x2x3_plot = heatmap(x₃, x₂, ux2_x2x3[:,:,1], xlabel="x₂ [m]",
     ylabel="x₃ [m]", colorbar_title="uₓ₂ [m/s]")
 display(ux2_x2x3_plot)
 savefig(ux2_x2x3_plot,"fig/ux2_x2x3_heatmap.pdf")
 
-ux3_x2x3_plot = heatmap(x₂, x₃, ux3_x2x3[:,:,1], xlabel="x₂ [m]",
+ux3_x2x3_plot = heatmap(x₃, x₂, ux3_x2x3[:,:,1], xlabel="x₂ [m]",
     ylabel="x₃ [m]", colorbar_title="uₓ₃ [m/s]")
 display(ux3_x2x3_plot)
 savefig(ux3_x2x3_plot,"fig/ux3_x2x3_heatmap.pdf")
 
-T_x2x3_plot = heatmap(x₂, x₃, T_x2x3[:,:,1], xlabel="x₂ [m]",
+T_x2x3_plot = heatmap(x₃, x₂, T_x2x3[:,:,1], xlabel="x₂ [m]",
     ylabel="x₃ [m]", colorbar_title="T [K]")
 display(T_x2x3_plot)
 savefig(T_x2x3_plot,"fig/T_x2x3_heatmap.pdf")
 
-ux1_x2x1_plot = heatmap(x₁[:], x₂, ux1_x2x1[:,:,1], xlabel="x₁ [m]",
+ux1_x2x1_plot = heatmap(x₁, x₂, ux1_x2x1[:,:,1], xlabel="x₁ [m]",
     ylabel="x₂ [m]", colorbar_title="uₓ₁ [m/s]", aspect_ratio=:equal)
 display(ux1_x2x1_plot)
 savefig(ux1_x2x1_plot,"fig/ux1_x2x1_heatmap.pdf")
@@ -220,22 +220,22 @@ savefig(T_x2x1_plot,"fig/T_x2x1_heatmap.pdf")
 ################################################################################
 
 # Scalar Statistics ############################################################
-ux1_mean = mean(ux1_x2x3)
-ux2_mean = mean(ux2_x2x3)
-ux3_mean = mean(ux3_x2x3)
-T_mean = mean(T_x2x3)
-ux1_std = moment(ux1_x2x3, 2)
-ux2_std = moment(ux2_x2x3, 2)
-ux3_std = moment(ux3_x2x3, 2)
-T_std = moment(T_x2x3, 2)
-ux1_skw = moment(ux1_x2x3, 3)
-ux2_skw = moment(ux2_x2x3, 3)
-ux3_skw = moment(ux3_x2x3, 3)
-T_skw = moment(T_x2x3, 3)
-ux1_kur = moment(ux1_x2x3, 4)
-ux2_kur = moment(ux2_x2x3, 4)
-ux3_kur = moment(ux3_x2x3, 4)
-T_kur = moment(T_x2x3, 4)
+ux1_mean = mean(ux1_x2x1)
+ux2_mean = mean(ux2_x2x1)
+ux3_mean = mean(ux3_x2x1)
+T_mean = mean(T_x2x1)
+ux1_std = moment(ux1_x2x1, 2)
+ux2_std = moment(ux2_x2x1, 2)
+ux3_std = moment(ux3_x2x1, 2)
+T_std = moment(T_x2x1, 2)
+ux1_skw = moment(ux1_x2x1, 3)
+ux2_skw = moment(ux2_x2x1, 3)
+ux3_skw = moment(ux3_x2x1, 3)
+T_skw = moment(T_x2x1, 3)
+ux1_kur = moment(ux1_x2x1, 4)
+ux2_kur = moment(ux2_x2x1, 4)
+ux3_kur = moment(ux3_x2x1, 4)
+T_kur = moment(T_x2x1, 4)
 
 # Velocity trace 1/3 <uᵢuᵢ>
 vtrace = (1/3)*(ux1_std^2 + ux2_std^2 + ux3_std^2)

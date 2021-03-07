@@ -270,7 +270,7 @@ module functions
               call velocitySpectrum(phi11, [kx(i), ky(j), kz(temp3)] , &
                 sigma,L, 1, 1)
               h11 = sqrt( phi11*dkx*dky*dkz )
-              w1(i,j,k)  = cmplx(h11*real(N1),h11*imag(N1))*real(product(dim1))
+              w1(i,j,k)  = cmplx(h11*real(N1),h11*imag(N1))!*real(product(dim1))
               call velocitySpectrum(phi12, [kx(i), ky(j), kz(temp3)], &
                 sigma, L, 1, 2)
               if ( phi11 .eq. 0 ) then
@@ -288,7 +288,7 @@ module functions
                 h22 = sqrt( phi22*dkx*dky*dkz  - h12**2 )
               end if
               w2(i,j,k)  = (cmplx(h12,0.0)*N1 + &
-                cmplx(h22,0.0)*N2)*real(product(dim2))
+                cmplx(h22,0.0)*N2)!*real(product(dim2))
               call velocitySpectrum(phi13, [kx(i), ky(j), kz(temp3)], &
                 sigma, L, 1, 3)
               if ( phi11 .eq. 0 ) then
@@ -309,11 +309,11 @@ module functions
                 h33 = sqrt( phi33*dkx*dky*dkz - (h13**2) - (h23**2) )
               end if
               w3(i,j,k)  = (cmplx(h13,0.0)*N1 + cmplx(h23,0.0)*N2 &
-                + cmplx(h33,0.0)*N3)*real(product(dim3))
+                + cmplx(h33,0.0)*N3)!*real(product(dim3))
               call vonKarman_temperature(phiT, &
                 sqrt(kx(i)**2 + ky(j)**2 + kz(temp3)**2), LT, sigmaT)
               hT = sqrt( phiT*dkx*dky*dkz )
-              wT(i,j,k)  = cmplx(hT,0.0)*NT*real(product(dimT))
+              wT(i,j,k)  = cmplx(hT,0.0)*NT!*real(product(dimT))
               if ( isnan(real(w2(i,j,k))) ) write (*,*) w2(i,j,k), h12**2, phi12, phi11, kx(i), ky(j), kz(temp3)
             end do
           end do
@@ -423,12 +423,12 @@ module functions
                 h23 = sqrt(E*dkx*dky*dkz*(ktotal**2)/( ky(j)**2 + kz(temp3)**2 ) )*ky(j)
                 h33 = 0.0
               end if
-              w1(i,j,k)  = h11*N1*real(product(dim1))
-              w2(i,j,k)  = (h12*N1 + h22*N2)*real(product(dim2))
-              w3(i,j,k)  = (h13*N1 + h23*N2 + h33*N3)*real(product(dim3))
+              w1(i,j,k)  = h11*N1!*real(product(dim1))
+              w2(i,j,k)  = (h12*N1 + h22*N2)!*real(product(dim2))
+              w3(i,j,k)  = (h13*N1 + h23*N2 + h33*N3)!*real(product(dim3))
               call vonKarman_temperature(phiT, ktotal, LT, sigmaT)
               hT = sqrt( phiT*dkx*dky*dkz )
-              wT(i,j,k)  = cmplx(hT,0.0)*NT*real(product(dimT))
+              wT(i,j,k)  = cmplx(hT,0.0)*NT!*real(product(dimT))
               ! if ( isnan(real(w2(i,j,k))) ) write (*,*) w2(i,j,k), h12**2, phi12, phi11, kx(i), ky(j), kz(temp3)
             end do
           end do
@@ -441,6 +441,329 @@ module functions
 
 
     end subroutine construct_w
+
+    subroutine Frehlich(ux, uy, uz, x, y, z, sigmau, Lu, sigmaT, LT, comm)
+      implicit none
+      real(sp), intent(out)     :: ux(:,:,:), uy(:,:,:), uz(:,:,:)
+      real(sp), intent(in)      :: x(:), y(:), z(:)
+      real(sp), intent(in)      :: sigmau, Lu, sigmaT, LT
+      integer(isp), intent(in)  :: comm
+      integer(isp)              :: i, j, k, global, n, m, l
+      complex(sp), allocatable  :: B11(:,:,:), B22(:,:,:), B33(:,:,:)
+      complex(sp), allocatable  :: W11(:,:,:), W22(:,:,:), W33(:,:,:)
+      complex(sp), allocatable  :: w1(:,:,:), w2(:,:,:), w3(:,:,:)
+      complex(sp), allocatable  :: temp1(:,:,:)
+      real(sp)                      :: a1, b1, a2, b2, a, b
+      complex(sp)                   :: N1, N2, N3
+      ! MPI variables ***********************************************************
+      integer(isp)              :: proc, nproc, mpi_err
+      !**************************************************************************
+  
+      ! Get processor information ***********************************************
+      call MPI_COMM_SIZE(comm, nproc, mpi_err)
+      call MPI_COMM_RANK(comm, proc, mpi_err)
+      !**************************************************************************
+
+      n = size(ux,dim=1)
+      m = size(ux,dim=2)
+      l = size(ux,dim=3)
+      allocate ( B11(size(ux,dim=1),size(ux,dim=2),size(ux,dim=3)) )
+      allocate ( B22(size(uy,dim=1),size(uy,dim=2),size(uy,dim=3)) )
+      allocate ( B33(size(uz,dim=1),size(uz,dim=2),size(uz,dim=3)) )
+      allocate ( temp1(size(ux,dim=2),size(ux,dim=3)*nproc,size(ux,dim=1)/nproc))
+      allocate ( W11(size(ux,dim=3)*nproc,size(ux,dim=1),size(ux,dim=2)/nproc) )
+      allocate ( W22(size(uy,dim=3)*nproc,size(uy,dim=1),size(uy,dim=2)/nproc) )
+      allocate ( W33(size(uz,dim=3)*nproc,size(uz,dim=1),size(uz,dim=2)/nproc) )
+      allocate ( w1(size(ux,dim=3)*nproc,size(ux,dim=1),size(ux,dim=2)/nproc) )
+      allocate ( w2(size(uy,dim=3)*nproc,size(uy,dim=1),size(uy,dim=2)/nproc) )
+      allocate ( w3(size(uz,dim=3)*nproc,size(uz,dim=1),size(uz,dim=2)/nproc) )
+
+      ! Compute Correlations 
+      call vonKarmanCorrelation(B11, B22, B33, x, y, z, sigmau, Lu, sigmaT, LT, comm)
+      !
+
+      ! Compute W by taking Fourier transform of B
+      
+      ! Compute FFT in y, z ( 1st two dimensions of B ) ********************************
+      call mkl_fft(B11(:,1,1), [n,m,l], 2 )
+      call mkl_fft(B22(:,1,1), [n,m,l], 2 )
+      call mkl_fft(B33(:,1,1), [n,m,l], 2 )
+      !**************************************************************************
+
+      ! Transpose out of place **************************************************
+      call transpose( W11(:,1,1), temp1(:,1,1), B11(:,1,1), [l*nproc,n,m/nproc], &
+        [m,l*nproc,n/nproc], [n,m,l], 312, comm )
+      call transpose( W22(:,1,1), temp1(:,1,1), B22(:,1,1), [l*nproc,n,m/nproc], &
+        [m,l*nproc,n/nproc], [n,m,l], 312, comm )
+      call transpose( W33(:,1,1), temp1(:,1,1), B33(:,1,1), [l*nproc,n,m/nproc], &  
+        [m,l*nproc,n/nproc], [n,m,l], 312, comm )
+      !**************************************************************************
+
+      ! Compute FFT in x ( 1st dimension of W ) ********************************
+      call mkl_fft(W11(:,1,1), [l*nproc,n,m/nproc], 1 )
+      call mkl_fft(W22(:,1,1), [l*nproc,n,m/nproc], 1 )
+      call mkl_fft(W33(:,1,1), [l*nproc,n,m/nproc], 1 )
+      !**************************************************************************
+
+      ! Compute w from W 
+      do k = 1,size(W11,dim=3)
+        do j = 1,size(W11,dim=2)
+          do i = 1,size(W11,dim=1)
+            if ( real(W11(i,j,k)) .lt. 0.0 ) then
+              W11(i,j,k) = cmplx(0.0,0.0)
+            end if 
+            if ( real(W22(i,j,k)) .lt. 0.0 ) then
+              W22(i,j,k) = cmplx(0.0,0.0)
+            end if 
+            if ( real(W33(i,j,k)) .lt. 0.0 ) then
+              W33(i,j,k) = cmplx(0.0,0.0)
+            end if 
+          end do 
+        end do
+      end do
+
+      ! Generate random numbers and compute w
+      call random_seed()
+        do k = 1,size(W11,dim=3)
+          global = k + proc*size(W11,dim=3)
+          do j = 1,size(W11,dim=2)
+            do i = 1,size(W11,dim=1)
+              ! Random vectors
+              call random_number(a1)
+              do while ( a1 .eq. 0 )
+                call random_number(a1)
+              end do
+              call random_number(b1)
+              do while ( b1 .eq. 0 )
+                call random_number(b1)
+              end do
+              call gaussian_boxmuller(a, a1, b1, 0.0_sp, 1.0_sp)
+              call random_number(a2)
+              do while ( a2 .eq. 0 )
+                call random_number(a2)
+              end do
+              call random_number(b2)
+              do while ( b2 .eq. 0 )
+                call random_number(b2)
+              end do
+              call gaussian_boxmuller(b, a2, b2, 0.0_sp, 1.0_sp)
+              N1 = a + img*b
+              call random_number(a1)
+              do while ( a1 .eq. 0 )
+                call random_number(a1)
+              end do
+              call random_number(b1)
+              do while ( b1 .eq. 0 )
+                call random_number(b1)
+              end do
+              call gaussian_boxmuller(a, a1, b1, 0.0_sp, 1.0_sp)
+              call random_number(a2)
+              do while ( a2 .eq. 0 )
+                call random_number(a2)
+              end do
+              call random_number(b2)
+              do while ( b2 .eq. 0 )
+                call random_number(b2)
+              end do
+              call gaussian_boxmuller(b, a2, b2, 0.0_sp, 1.0_sp)
+              N2 = a + img*b
+              call random_number(a1)
+              do while ( a1 .eq. 0 )
+                call random_number(a1)
+              end do
+              call random_number(b1)
+              do while ( b1 .eq. 0 )
+                call random_number(b1)
+              end do
+              call gaussian_boxmuller(a, a1, b1, 0.0_sp, 1.0_sp)
+              call random_number(a2)
+              do while ( a2 .eq. 0 )
+                call random_number(a2)
+              end do
+              call random_number(b2)
+              do while ( b2 .eq. 0 )
+                call random_number(b2)
+              end do
+              call gaussian_boxmuller(b, a2, b2, 0.0_sp, 1.0_sp)
+              N3 = a + img*b
+              ! Weights 
+              w1(i,j,k) = sqrt(real(W11(i,j,k)))*N1 
+              w2(i,j,k) = sqrt(real(W22(i,j,k)))*N2 
+              w3(i,j,k) = sqrt(real(W33(i,j,k)))*N3
+            end do
+          end do
+        end do
+
+      ! Compute u from w (by taking inverse Fourier transform) (B arrays will hold complex velocity)
+      ! Compute iFFT in x ( 1st dimension of w ) ********************************
+      call mkl_fft(w1(:,1,1), [l*nproc,n,m/nproc], 1, inverse=.true. )
+      call mkl_fft(w2(:,1,1), [l*nproc,n,m/nproc], 1, inverse=.true. )
+      call mkl_fft(w3(:,1,1), [l*nproc,n,m/nproc], 1, inverse=.true. )
+      !**************************************************************************
+
+      ! Transpose out of place **************************************************
+      call transpose(B11(:,1,1), temp1(:,1,1), w1(:,1,1), [n,m,l], [m,l*nproc,n/nproc], &
+        [l*nproc,n,m/nproc], 231, comm )
+      call transpose(B22(:,1,1), temp1(:,1,1), w2(:,1,1), [n,m,l], [m,l*nproc,n/nproc], &
+        [l*nproc,n,m/nproc], 231, comm )
+      call transpose(B33(:,1,1), temp1(:,1,1), w3(:,1,1), [n,m,l], [m,l*nproc,n/nproc], &
+        [l*nproc,n,m/nproc], 231, comm )
+      !**************************************************************************
+
+      ! Compute iFFT in z, y ****************************************************
+      call mkl_fft(B11(:,1,1), [n,m,l], 2, inverse=.true. )
+      call mkl_fft(B22(:,1,1), [n,m,l], 2, inverse=.true. )
+      call mkl_fft(B33(:,1,1), [n,m,l], 2, inverse=.true. )
+      !**************************************************************************
+
+      ux = real(B11)
+      uy = real(B22)
+      uz = real(B33)
+
+    end subroutine Frehlich
+
+    subroutine vonKarmanCorrelation(B11, B22, B33, x, y, z, sigma, L, sigmaT, LT, comm)
+      implicit none
+      ! I/O *********************************************************************
+      complex(sp), intent(out)  :: B11(:,:,:), B22(:,:,:), B33(:,:,:)
+      real(sp), intent(in)      :: x(:), y(:), z(:)
+      real(sp), intent(in)      :: sigma, L, sigmaT, LT 
+      integer(isp), intent(in)  :: comm
+      ! Local ******************************************************************
+      real(sp)                  :: r1(size(x,dim=1)), r2(size(y,dim=1)), r3(size(z,dim=1))
+      real(sp)                  :: Gd, G, r
+      integer(isp)              :: i, j, k, global
+      real(dp)                  :: vj1, vj2, vy1, vy2, vi1, vi2, vk1, vk2
+      real(sp)                  :: xcenter, xlength, ycenter, ylength, zcenter, zlength
+      ! MPI variables ***********************************************************
+      integer(isp)              :: proc, nproc, mpi_err
+      !**************************************************************************
+  
+      ! Get processor information ***********************************************
+      call MPI_COMM_SIZE(comm, nproc, mpi_err)
+      call MPI_COMM_RANK(comm, proc, mpi_err)
+      !**************************************************************************
+
+      ! Construct Correlation
+      xlength = maxval(x) - minval(x)
+      xcenter = xlength/2.0
+      r1 = (/ ( ( -xcenter + (i-1)*( (xlength)/(size(x,dim=1) - 1) ) &
+        ),i=1,size(x,dim=1) ) /)
+      ylength = maxval(y) - minval(y)
+      ycenter = ylength/2.0
+      r2 = (/ ( ( -ycenter + (i-1)*( (ylength)/(size(y,dim=1) - 1) ) &
+        ),i=1,size(y,dim=1) ) /)
+      zlength = maxval(z) - minval(z)
+      zcenter = zlength/2.0
+      r3 = (/ ( ( -zcenter + (i-1)*( (zlength)/(size(z,dim=1) - 1) ) &
+        ),i=1,size(z,dim=1) ) /)
+      r1 = cshift(r1,size(r1,dim=1)/2)
+      r2 = cshift(r2,size(r2,dim=1)/2)
+      r3 = cshift(r3,size(r3,dim=1)/2)
+
+      do k = 1,size(B11,dim=3)
+        global = k + proc*size(B11,dim=3)
+        do j = 1,size(B11,dim=2)
+          do i = 1,size(B11,dim=1)
+            r = sqrt(r1(global)**2 + r2(i)**2 + r3(j)**2)
+            call ajyik( real(r/L, kind=8), vj1, vj2, vy1, vy2, vi1, vi2, vk1, vk2 )
+            Gd = 0.29627426*( (r/L)**(4.0/3.0) )*vk2
+            G = 0.5925485*( (r/L)**(1.0/3.0) )*vk1
+            if ( r .eq. 0.0 ) then
+              B11(i,j,k) = (sigma**2 )*(G - Gd)
+              B22(i,j,k) = (sigma**2 )*(G - Gd)
+              B33(i,j,k) = (sigma**2 )*(G - Gd)
+            else
+              B11(i,j,k) = (sigma**2 )*Gd*( (r1(global)*r1(global))/(r**2) ) + (sigma**2 )*(G - Gd)
+              B22(i,j,k) = (sigma**2 )*Gd*( (r2(i)*r2(i))/(r**2) ) + (sigma**2 )*(G - Gd)
+              B33(i,j,k) = (sigma**2 )*Gd*( (r3(j)*r3(j))/(r**2) ) + (sigma**2 )*(G - Gd)
+            end if
+          end do
+        end do 
+      end do
+
+    end subroutine vonKarmanCorrelation
+
+    subroutine make_symmetric(B, comm)
+      implicit none
+      complex(sp), intent(inout) :: B(:,:,:)
+      integer(isp), intent(in)  :: comm 
+      complex(sp), allocatable  :: temp1(:,:,:)
+      complex(sp), allocatable  :: temp2(:,:,:)
+      integer(isp)              :: i, j, k, n, m
+      ! MPI variables ***********************************************************
+      integer(isp)              :: proc, nproc, mpi_err
+      !**************************************************************************
+  
+      ! Get processor information ***********************************************
+      call MPI_COMM_SIZE(comm, nproc, mpi_err)
+      call MPI_COMM_RANK(comm, proc, mpi_err)
+      !**************************************************************************
+
+      allocate ( temp1(size(B,dim=2),size(B,dim=3)*nproc,size(B,dim=1)/nproc))
+      allocate ( temp2(size(B,dim=3)*nproc,size(B,dim=1),size(B,dim=2)/nproc))   
+      
+      ! Make symmetric in first dimension
+      m = size(B,dim=1)
+      n = m/2
+      do k = 1,size(B,dim=3)
+        do j = 1,size(B,dim=2)
+          do i = 1,n
+            if (i .eq. 1) then
+              continue
+            else
+              B(m-(i-2),j,k) = B(i,j,k)
+            end if
+          end do
+        end do
+      end do
+
+      ! Make symmetric in second dimension
+      call transpose(temp1(:,1,1), temp2(:,1,1), B(:,1,1), &
+        [size(B,dim=2),size(B,dim=3)*nproc,size(B,dim=1)/nproc], &
+        [size(B,dim=3)*nproc,size(B,dim=1),size(B,dim=2)/nproc], [size(B,dim=1), &
+        size(B,dim=2), size(B,dim=3)], 231, comm)
+      
+      m = size(temp1,dim=1)
+      n = m/2
+      do k = 1,size(temp1,dim=3)
+        do j = 1,size(temp1,dim=2)
+          do i = 1,n
+            if (i .eq. 1) then
+              continue
+            else
+              temp1(m-(i-2),j,k) = temp1(i,j,k)
+            end if
+          end do
+        end do
+      end do
+
+      ! Make symmetric in third dimension
+      call transpose(temp2(:,1,1), B(:,1,1), temp1(:,1,1), &
+        [size(B,dim=3)*nproc,size(B,dim=1),size(B,dim=2)/nproc], [size(B,dim=1), &
+        size(B,dim=2), size(B,dim=3)], [size(B,dim=2),size(B,dim=3)*nproc,size(B,dim=1)/nproc], 231, comm)
+
+      m = size(temp2,dim=1)
+      n = m/2
+      do k = 1,size(temp2,dim=3)
+        do j = 1,size(temp2,dim=2)
+          do i = 1,n
+            if (i .eq. 1) then
+              continue
+            else
+              temp2(m-(i-2),j,k) = temp2(i,j,k)
+            end if
+          end do
+        end do
+      end do
+
+      ! Transpose back to B 
+      call transpose(B(:,1,1), temp1(:,1,1), temp2(:,1,1), &
+        [size(B,dim=1), size(B,dim=2), size(B,dim=3)], &
+        [size(B,dim=2),size(B,dim=3)*nproc,size(B,dim=1)/nproc], &
+        [size(B,dim=3)*nproc,size(B,dim=1),size(B,dim=2)/nproc], 231, comm)
+
+    end subroutine make_symmetric
 
     subroutine mkl_fft(f, dims, fft_dim, inverse, err_code)
         !**********************************************************************
@@ -506,7 +829,7 @@ module functions
         ! Perform grid%ys*im_b%zs_l one dimensional transforms in t dimension
         status = DftiSetValue(My_Desc_Handle, DFTI_NUMBER_OF_TRANSFORMS, num_fft)
         if (status .ne. 0) goto 999
-        status = DftiSetValue(My_Desc_Handle, DFTI_BACKWARD_SCALE, 1.0/( 1.0*product( L ) ) )
+        status = DftiSetValue(My_Desc_Handle, DFTI_FORWARD_SCALE, 1.0/( 1.0*product( L ) ) )
         if (status .ne. 0) goto 999
         status = DftiSetValue(My_Desc_Handle, DFTI_INPUT_DISTANCE, product(L) )
         if (status .ne. 0) goto 999
@@ -682,7 +1005,7 @@ module functions
             !******************************************************************
 
             ! All to All communication ****************************************
-            do j = 1,dout(3)
+            do j = 1,dtemp(3)
                 call MPI_ALLTOALLW(in, sendcounts(:,j), sdisps(:,j), sendtype,&
                     temp, recvcounts(:,j), rdisps(:,j), recvtype, comm, mpi_err)
             end do

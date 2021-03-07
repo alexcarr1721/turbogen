@@ -911,6 +911,8 @@ module functions
         integer(isp), allocatable :: sendcounts(:,:), sdisps(:,:), &
             recvcounts(:,:), rdisps(:,:), sendtype(:), recvtype(:)
         integer(isp)    :: type_send
+        integer(isp), allocatable :: sendcounts1(:,:), sdisps1(:,:), &
+            recvcounts1(:,:), rdisps1(:,:)
         !**********************************************************************
         
         ! Obtain processor info ***********************************************
@@ -935,6 +937,8 @@ module functions
         ! Allocate the MPI send and receive info ******************************
         allocate ( sendcounts(nproc, dout(3)), sdisps(nproc,dout(3)) )
         allocate ( recvcounts(nproc,dout(3)), rdisps(nproc,dout(3)) )
+        allocate ( sendcounts1(nproc, dtemp(3)), sdisps1(nproc,dtemp(3)) )
+        allocate ( recvcounts1(nproc,dtemp(3)), rdisps1(nproc,dtemp(3)) )
         allocate ( sendtype(nproc), recvtype(nproc) )
         !**********************************************************************
 
@@ -952,8 +956,7 @@ module functions
             do j = 1,dout(3)
                 do i = 1,nproc
                     sendcounts(i,j) = 1
-                    sdisps(i,j)     = ((i-1)*dout(3) + &
-                        (j-1))*int(sizeof(in(1)),4)
+                    sdisps(i,j)     = ((i-1)*dout(3) + (j-1))*int(sizeof(in(1)),4)
                     sendtype(i)     = type_send
                     recvcounts(i,j) = din(2)*din(3)
                     rdisps(i,j)     = ((i-1)*din(2)*din(3) + &
@@ -992,12 +995,11 @@ module functions
             ! Counts and displacements ****************************************
             do j = 1,dtemp(3)
                 do i = 1,nproc
-                    sendcounts(i,j) = 1
-                    sdisps(i,j)     = ((i-1)*dtemp(3) + &
-                        (j-1))*int(sizeof(in(1)),4)
+                    sendcounts1(i,j) = 1
+                    sdisps1(i,j)     = ((i-1)*dtemp(3) + (j-1))*int(sizeof(in(1)),4)
                     sendtype(i)     = type_send
-                    recvcounts(i,j) = din(2)*din(3)
-                    rdisps(i,j)     = ((i-1)*din(2)*din(3) + &
+                    recvcounts1(i,j) = din(2)*din(3)
+                    rdisps1(i,j)     = ((i-1)*din(2)*din(3) + &
                         (j-1)*dtemp(1)*dtemp(2))*int(sizeof(temp(1)),4)
                     recvtype(i)     = MPI_COMPLEX
                 end do
@@ -1006,8 +1008,8 @@ module functions
 
             ! All to All communication ****************************************
             do j = 1,dtemp(3)
-                call MPI_ALLTOALLW(in, sendcounts(:,j), sdisps(:,j), sendtype,&
-                    temp, recvcounts(:,j), rdisps(:,j), recvtype, comm, mpi_err)
+                call MPI_ALLTOALLW(in, sendcounts1(:,j), sdisps1(:,j), sendtype,&
+                    temp, recvcounts1(:,j), rdisps1(:,j), recvtype, comm, mpi_err)
             end do
             !******************************************************************
 
@@ -1029,8 +1031,7 @@ module functions
             do j = 1,dout(3)
                 do i = 1,nproc
                     sendcounts(i,j) = 1
-                    sdisps(i,j)     = ((i-1)*dout(3) + &
-                        (j-1))*int(sizeof(temp(1)),4)
+                    sdisps(i,j)     = ((i-1)*dout(3) + (j-1))*int(sizeof(temp(1)),4)
                     sendtype(i)     = type_send
                     recvcounts(i,j) = dtemp(2)*dtemp(3)
                     rdisps(i,j)     = ((i-1)*dtemp(2)*dtemp(3) + &
@@ -1075,6 +1076,8 @@ module functions
         ! Deallocate everything ***********************************************
         deallocate ( sendcounts, sdisps, recvcounts )
         deallocate ( rdisps, sendtype, recvtype )
+        deallocate ( sendcounts1, sdisps1, recvcounts1 )
+        deallocate ( rdisps1 )
         !**********************************************************************
 
         call MPI_BARRIER(comm, mpi_err)

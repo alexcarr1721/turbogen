@@ -194,7 +194,9 @@ j = 0
 for i ∈ successful_sims
     global j, x₁, x₂, x₃, x1half, x2half, x3half, ux1_x2x3, ux2_x2x3,
         ux3_x2x3, T_x2x3, ux1_x1_center, ux2_x1_center,
-        ux3_x1_center, T_x1_center, ux1_x2x1, ux2_x2x1, ux3_x2x1, T_x2x1
+        ux3_x1_center, T_x1_center, ux1_x2x1, ux2_x2x1, ux3_x2x1, T_x2x1,
+        ux1_x2_center, ux2_x2_center, ux3_x2_center, ux1_x3_center,
+        ux2_x3_center, ux3_x3_center, T_x2_center, T_x3_center
     j = j + 1
 
     # Spline interpolation of contours #########################################
@@ -212,7 +214,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₃,1))
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux1_x2x3 = sitp(x₂, x₃, (x₁[1]+x₁[size(x₁,1)])/2.0)
     dset_ux1_x2x3[:,:,j] = ux1_x2x3
 
@@ -221,7 +223,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₃,1))
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux2_x2x3 = sitp(x₂, x₃, (x₁[1]+x₁[size(x₁,1)])/2.0)
     dset_ux2_x2x3[:,:,j] = ux2_x2x3
 
@@ -230,7 +232,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₃,1))
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux3_x2x3 = sitp(x₂, x₃, (x₁[1]+x₁[size(x₁,1)])/2.0)
     dset_ux3_x2x3[:,:,j] = ux3_x2x3
 
@@ -239,7 +241,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₃,1))
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     T_x2x3 = sitp(x₂, x₃, (x₁[1]+x₁[size(x₁,1)])/2.0)
     dset_T_x2x3[:,:,j] = T_x2x3
 
@@ -257,7 +259,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[1], stop=x₁[size(x₁,1)], length=size(x₁,1))
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux1_x2x1 = sitp(x₂, (x₃[1]+x₃[size(x₃,1)])/2.0, x₁)
     dset_ux1_x2x1[:,:,j] = ux1_x2x1
 
@@ -266,7 +268,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[1], stop=x₁[size(x₁,1)], length=size(x₁,1))
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux2_x2x1 = sitp(x₂, (x₃[1]+x₃[size(x₃,1)])/2.0, x₁)
     dset_ux2_x2x1[:,:,j] = ux2_x2x1
 
@@ -275,7 +277,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[1], stop=x₁[size(x₁,1)], length=size(x₁,1))
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux3_x2x1 = sitp(x₂, (x₃[1]+x₃[size(x₃,1)])/2.0, x₁)
     dset_ux3_x2x1[:,:,j] = ux3_x2x1
 
@@ -284,7 +286,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[1], stop=x₁[size(x₁,1)], length=size(x₁,1))
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     T_x2x1 = sitp(x₂, (x₃[1]+x₃[size(x₃,1)])/2.0, x₁)
     dset_T_x2x1[:,:,j] = T_x2x1
     ############################################################################
@@ -297,7 +299,7 @@ for i ∈ successful_sims
     range1 = range(x₂[x2half-2], stop=x₂[x2half+3], length=6)
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[1], stop=x₁[size(x₁,1)], length=size(x₁,1))
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux1_x1_center = sitp((x₂[1] + x₂[size(x₂,1)])/2.0,
         (x₃[1]+x₃[size(x₃,1)])/2.0, x₁)
     dset_ux1_x1_center[:,j] = ux1_x1_center
@@ -308,7 +310,7 @@ for i ∈ successful_sims
     range1 = range(x₂[x2half-2], stop=x₂[x2half+3], length=6)
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[1], stop=x₁[size(x₁,1)], length=size(x₁,1))
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux2_x1_center = sitp((x₂[1] + x₂[size(x₂,1)])/2.0,
         (x₃[1]+x₃[size(x₃,1)])/2.0, x₁)
     dset_ux2_x1_center[:,j] = ux2_x1_center
@@ -319,7 +321,7 @@ for i ∈ successful_sims
     range1 = range(x₂[x2half-2], stop=x₂[x2half+3], length=6)
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[1], stop=x₁[size(x₁,1)], length=size(x₁,1))
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux3_x1_center = sitp((x₂[1] + x₂[size(x₂,1)])/2.0,
         (x₃[1]+x₃[size(x₃,1)])/2.0, x₁)
     dset_ux3_x1_center[:,j] = ux3_x1_center
@@ -330,7 +332,7 @@ for i ∈ successful_sims
     range1 = range(x₂[x2half-2], stop=x₂[x2half+3], length=6)
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[1], stop=x₁[size(x₁,1)], length=size(x₁,1))
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     T_x1_center = (sitp((x₂[1] + x₂[size(x₂,1)])/2.0,
         (x₃[1]+x₃[size(x₃,1)])/2.0, x₁).^2)
     dset_T_x1_center[:,j] = T_x1_center
@@ -341,7 +343,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux1_x2_center = sitp(x₂,
         (x₃[1]+x₃[size(x₃,1)])/2.0, (x₁[1] + x₁[size(x₁,1)])/2.0 )
     dset_ux1_x2_center[:,j] = ux1_x2_center
@@ -352,7 +354,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux2_x2_center = sitp(x₂,
         (x₃[1]+x₃[size(x₃,1)])/2.0, (x₁[1] + x₁[size(x₁,1)])/2.0 )
     dset_ux2_x2_center[:,j] = ux2_x2_center
@@ -363,7 +365,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux3_x2_center = sitp(x₂,
         (x₃[1]+x₃[size(x₃,1)])/2.0, (x₁[1] + x₁[size(x₁,1)])/2.0 )
     dset_ux3_x2_center[:,j] = ux3_x2_center
@@ -374,7 +376,7 @@ for i ∈ successful_sims
     range1 = range(x₂[1], stop=x₂[size(x₂,1)], length=size(x₂,1))
     range2 = range(x₃[x3half-2], stop=x₃[x3half+3], length=6)
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     T_x2_center = sitp(x₂,
         (x₃[1]+x₃[size(x₃,1)])/2.0, (x₁[1] + x₁[size(x₁,1)])/2.0 )
     dset_T_x2_center[:,j] = T_x2_center
@@ -383,9 +385,9 @@ for i ∈ successful_sims
         (x2half-2:x2half+3,:,x1half-2:x1half+3))
     itp = interpolate(A2D, BSpline(Cubic(Line(OnGrid()))))
     range1 = range(x₂[x2half-2], stop=x₂[x2half+3], length=6)
-    range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₂,1))
+    range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₃,1))
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux1_x3_center = sitp((x₂[1] + x₂[size(x₂,1)])/2.0,  x₃,
         (x₁[1] + x₁[size(x₁,1)])/2.0 )
     dset_ux1_x3_center[:,j] = ux1_x3_center
@@ -394,9 +396,9 @@ for i ∈ successful_sims
         (x2half-2:x2half+3,:,x1half-2:x1half+3))
     itp = interpolate(A2D, BSpline(Cubic(Line(OnGrid()))))
     range1 = range(x₂[x2half-2], stop=x₂[x2half+3], length=6)
-    range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₂,1))
+    range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₃,1))
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux2_x3_center = sitp((x₂[1] + x₂[size(x₂,1)])/2.0,  x₃,
         (x₁[1] + x₁[size(x₁,1)])/2.0 )
     dset_ux2_x3_center[:,j] = ux2_x3_center
@@ -405,9 +407,9 @@ for i ∈ successful_sims
         (x2half-2:x2half+3,:,x1half-2:x1half+3))
     itp = interpolate(A2D, BSpline(Cubic(Line(OnGrid()))))
     range1 = range(x₂[x2half-2], stop=x₂[x2half+3], length=6)
-    range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₂,1))
+    range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₃,1))
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     ux3_x3_center = sitp((x₂[1] + x₂[size(x₂,1)])/2.0,  x₃,
         (x₁[1] + x₁[size(x₁,1)])/2.0 )
     dset_ux3_x3_center[:,j] = ux3_x3_center
@@ -416,9 +418,9 @@ for i ∈ successful_sims
         (x2half-2:x2half+3,:,x1half-2:x1half+3))
     itp = interpolate(A2D, BSpline(Cubic(Line(OnGrid()))))
     range1 = range(x₂[x2half-2], stop=x₂[x2half+3], length=6)
-    range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₂,1))
+    range2 = range(x₃[1], stop=x₃[size(x₃,1)], length=size(x₃,1))
     range3 = range(x₁[x1half-2], stop=x₁[x1half+3], length=6)
-    sitp = scale(itp, range1, range2, range3 )
+    sitp = Interpolations.scale(itp, range1, range2, range3 )
     T_x3_center = sitp((x₂[1] + x₂[size(x₂,1)])/2.0,  x₃,
         (x₁[1] + x₁[size(x₁,1)])/2.0 )
     dset_T_x3_center[:,j] = T_x3_center

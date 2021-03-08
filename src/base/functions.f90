@@ -510,13 +510,13 @@ module functions
         do j = 1,size(W11,dim=2)
           do i = 1,size(W11,dim=1)
             if ( real(W11(i,j,k)) .lt. 0.0 ) then
-              W11(i,j,k) = cmplx(0.0,0.0)
+              W11(i,j,k) = cmplx(0.0,aimag(W11(i,j,k)))
             end if 
             if ( real(W22(i,j,k)) .lt. 0.0 ) then
-              W22(i,j,k) = cmplx(0.0,0.0)
+              W22(i,j,k) = cmplx(0.0,aimag(W11(i,j,k)))
             end if 
             if ( real(W33(i,j,k)) .lt. 0.0 ) then
-              W33(i,j,k) = cmplx(0.0,0.0)
+              W33(i,j,k) = cmplx(0.0,aimag(W11(i,j,k)))
             end if 
           end do 
         end do
@@ -633,7 +633,9 @@ module functions
       real(sp)                  :: r1(size(x,dim=1)), r2(size(y,dim=1)), r3(size(z,dim=1))
       real(sp)                  :: Gd, G, r
       integer(isp)              :: i, j, k, global
-      real(dp)                  :: vj1, vj2, vy1, vy2, vi1, vi2, vk1, vk2
+      real(dp)                  :: vj1, vj2, vy1, vy2, vi1, vi2, vk1, vk2, vm, vm2
+      complex(dp)                  :: cbi(1), cdi(1), cbk(1), cdk(1), f_model, g_model
+      complex(dp)                  :: cbi2(1), cdi2(1), cbk2(1), cdk2(1)
       real(sp)                  :: xcenter, xlength, ycenter, ylength, zcenter, zlength
       ! MPI variables ***********************************************************
       integer(isp)              :: proc, nproc, mpi_err
@@ -667,16 +669,29 @@ module functions
           do i = 1,size(B11,dim=1)
             r = sqrt(r1(global)**2 + r2(i)**2 + r3(j)**2)
             call ajyik( real(r/L, kind=8), vj1, vj2, vy1, vy2, vi1, vi2, vk1, vk2 )
+            call cikvb( real(1.0/3.0, kind=8), cmplx(real(r/L, kind=8),0.0, kind=8), vm, cbi, cdi, cbk, cdk )
             Gd = 0.29627426*( (r/L)**(4.0/3.0) )*vk2
             G = 0.5925485*( (r/L)**(1.0/3.0) )*vk1
+            f_model = 0.5925485*((r/L)**(1.0/3.0))*vk1
+            call cikvb( real(4.0/3.0, kind=8), cmplx(real(r/L, kind=8),0.0, kind=8), vm2, cbi2, cdi2, cbk2, cdk2 )
+            g_model = 0.5925485*((r/L)**(1.0/3.0))*((4.0/3.0)*vk1 - 0.5*(r/L)*cbk(1) )
+            ! if ( r .eq. 0.0 ) then
+            !   B11(i,j,k) = (sigma**2 )*(G - Gd)
+            !   B22(i,j,k) = (sigma**2 )*(G - Gd)
+            !   B33(i,j,k) = (sigma**2 )*(G - Gd)
+            ! else
+            !   B11(i,j,k) = (sigma**2 )*Gd*( (r1(global)*r1(global))/(r**2) ) + (sigma**2 )*(G - Gd)
+            !   B22(i,j,k) = (sigma**2 )*Gd*( (r2(i)*r2(i))/(r**2) ) + (sigma**2 )*(G - Gd)
+            !   B33(i,j,k) = (sigma**2 )*Gd*( (r3(j)*r3(j))/(r**2) ) + (sigma**2 )*(G - Gd)
+            ! end if
             if ( r .eq. 0.0 ) then
-              B11(i,j,k) = (sigma**2 )*(G - Gd)
-              B22(i,j,k) = (sigma**2 )*(G - Gd)
-              B33(i,j,k) = (sigma**2 )*(G - Gd)
+              B11(i,j,k) = (sigma**2 )*g_model
+              B22(i,j,k) = (sigma**2 )*g_model
+              B33(i,j,k) = (sigma**2 )*g_model
             else
-              B11(i,j,k) = (sigma**2 )*Gd*( (r1(global)*r1(global))/(r**2) ) + (sigma**2 )*(G - Gd)
-              B22(i,j,k) = (sigma**2 )*Gd*( (r2(i)*r2(i))/(r**2) ) + (sigma**2 )*(G - Gd)
-              B33(i,j,k) = (sigma**2 )*Gd*( (r3(j)*r3(j))/(r**2) ) + (sigma**2 )*(G - Gd)
+              B11(i,j,k) = (sigma**2 )*(f_model - g_model)*( (r1(global)*r1(global))/(r**2) ) + (sigma**2 )*g_model
+              B22(i,j,k) = (sigma**2 )*(f_model - g_model)*( (r2(i)*r2(i))/(r**2) ) + (sigma**2 )*g_model
+              B33(i,j,k) = (sigma**2 )*(f_model - g_model)*( (r3(j)*r3(j))/(r**2) ) + (sigma**2 )*g_model
             end if
           end do
         end do 

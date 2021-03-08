@@ -675,24 +675,24 @@ module functions
             f_model = 0.5925485*((r/L)**(1.0/3.0))*vk1
             call cikvb( real(4.0/3.0, kind=8), cmplx(real(r/L, kind=8),0.0, kind=8), vm2, cbi2, cdi2, cbk2, cdk2 )
             g_model = 0.5925485*((r/L)**(1.0/3.0))*((4.0/3.0)*vk1 - 0.5*(r/L)*cbk(1) )
-            ! if ( r .eq. 0.0 ) then
-            !   B11(i,j,k) = (sigma**2 )*(G - Gd)
-            !   B22(i,j,k) = (sigma**2 )*(G - Gd)
-            !   B33(i,j,k) = (sigma**2 )*(G - Gd)
-            ! else
-            !   B11(i,j,k) = (sigma**2 )*Gd*( (r1(global)*r1(global))/(r**2) ) + (sigma**2 )*(G - Gd)
-            !   B22(i,j,k) = (sigma**2 )*Gd*( (r2(i)*r2(i))/(r**2) ) + (sigma**2 )*(G - Gd)
-            !   B33(i,j,k) = (sigma**2 )*Gd*( (r3(j)*r3(j))/(r**2) ) + (sigma**2 )*(G - Gd)
-            ! end if
             if ( r .eq. 0.0 ) then
-              B11(i,j,k) = (sigma**2 )*g_model
-              B22(i,j,k) = (sigma**2 )*g_model
-              B33(i,j,k) = (sigma**2 )*g_model
+              B11(i,j,k) = (sigma**2 )*(G - Gd)
+              B22(i,j,k) = (sigma**2 )*(G - Gd)
+              B33(i,j,k) = (sigma**2 )*(G - Gd)
             else
-              B11(i,j,k) = (sigma**2 )*(f_model - g_model)*( (r1(global)*r1(global))/(r**2) ) + (sigma**2 )*g_model
-              B22(i,j,k) = (sigma**2 )*(f_model - g_model)*( (r2(i)*r2(i))/(r**2) ) + (sigma**2 )*g_model
-              B33(i,j,k) = (sigma**2 )*(f_model - g_model)*( (r3(j)*r3(j))/(r**2) ) + (sigma**2 )*g_model
+              B11(i,j,k) = (sigma**2 )*Gd*( (r1(global)*r1(global))/(r**2) ) + (sigma**2 )*(G - Gd)
+              B22(i,j,k) = (sigma**2 )*Gd*( (r2(i)*r2(i))/(r**2) ) + (sigma**2 )*(G - Gd)
+              B33(i,j,k) = (sigma**2 )*Gd*( (r3(j)*r3(j))/(r**2) ) + (sigma**2 )*(G - Gd)
             end if
+            ! if ( r .eq. 0.0 ) then
+            !   B11(i,j,k) = (sigma**2 )*g_model
+            !   B22(i,j,k) = (sigma**2 )*g_model
+            !   B33(i,j,k) = (sigma**2 )*g_model
+            ! else
+            !   B11(i,j,k) = (sigma**2 )*(f_model - g_model)*( (r1(global)*r1(global))/(r**2) ) + (sigma**2 )*g_model
+            !   B22(i,j,k) = (sigma**2 )*(f_model - g_model)*( (r2(i)*r2(i))/(r**2) ) + (sigma**2 )*g_model
+            !   B33(i,j,k) = (sigma**2 )*(f_model - g_model)*( (r3(j)*r3(j))/(r**2) ) + (sigma**2 )*g_model
+            ! end if
           end do
         end do 
       end do

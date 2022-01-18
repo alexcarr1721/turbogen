@@ -61,6 +61,11 @@ SET_COMPILE_FLAG(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS}"
                          /O3        # Intel Windows
                 )
 
+# Have to add fallow-argument-mismatch for gnu compilers v10
+SET_COMPILE_FLAG(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS}"
+	         Fortran "-fallow-argument-mismatch" # GNU
+		)
+
 ###################
 ### DEBUG FLAGS ###
 ###################
@@ -139,12 +144,17 @@ SET_COMPILE_FLAG(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE}"
                 )
 
 # Interprocedural (link-time) optimizations
+#SET_COMPILE_FLAG(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE}"
+#                 Fortran "-ipo"     # Intel
+#                         "/Qipo"    # Intel Windows
+#                         "-flto"    # GNU
+#                         "-Mipa"    # Portland Group
+#                )
+
+# No strict aliasing 
 SET_COMPILE_FLAG(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE}"
-                 Fortran "-ipo"     # Intel
-                         "/Qipo"    # Intel Windows
-                         "-flto"    # GNU
-                         "-Mipa"    # Portland Group
-                )
+		 Fortran "-fno-strict-aliasing" # GNU and Intel
+		 )
 
 # Single-file optimizations
 SET_COMPILE_FLAG(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE}"

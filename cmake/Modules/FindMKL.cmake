@@ -1,8 +1,8 @@
 #########################################################################################
-#											#
-#	Cmake script to locate Intel Math Kernel Library. Adapted from:			#
-#	https://repository.prace-ri.eu/git/CodeVault/hpc-kernels/structured_grids	#
-#											#
+#																						#
+#	Cmake script to locate Intel Math Kernel Library. Adapted from:						#
+#	https://repository.prace-ri.eu/git/CodeVault/hpc-kernels/structured_grids			#
+#																						#
 #########################################################################################
 
 
@@ -56,12 +56,24 @@ if (MKLROOT_PATH)
 	
 	# find specific library files
 		
+	find_library(LIB_MKL_INTERFACE NAMES mkl_intel_lp64 HINTS ${MKL_LIBRARY_DIR})
+	find_library(LIB_MKL_THREADING NAMES mkl_sequential HINTS ${MKL_LIBRARY_DIR})
+	find_library(LIB_MKL_CORE NAMES mkl_core HINTS ${MKL_LIBRARY_DIR})
 	find_library(LIB_MKL_RT NAMES mkl_rt HINTS ${MKL_LIBRARY_DIR})
 	find_library(LIB_PTHREAD NAMES pthread)	
+	find_library(LIB_MKL_BLAS95 NAMES mkl_blas95_lp64 HINTS ${MKL_LIBRARY_DIR})
+	find_library(LIB_MKL_LAPACK95 NAMES mkl_lapack95_lp64 HINTS ${MKL_LIBRARY_DIR})
+	find_library(LIB_MKL_FFTW3 NAMES fftw3xf_intel HINTS ${MKL_LIBRARY_DIR})
 	
 endif (MKLROOT_PATH)
 
 set(MKL_LIBRARY 
+	${LIB_MKL_INTERFACE}
+	${LIB_MKL_THREADING}
+	${LIB_MKL_CORE}
+	${LIB_MKL_BLAS95}
+	${LIB_MKL_LAPACK95}
+	${LIB_MKL_FFTW3}
 	${LIB_MKL_RT} 
 	${LIB_PTHREAD})
 	
@@ -71,10 +83,17 @@ include(FindPackageHandleStandardArgs)
 
 find_package_handle_standard_args(MKL DEFAULT_MSG 
     MKL_LIBRARY_DIR
+	LIB_MKL_INTERFACE
+	LIB_MKL_THREADING
+	LIB_MKL_CORE
+	LIB_MKL_BLAS95
+	LIB_MKL_LAPACK95
+	LIB_MKL_FFTW3
     LIB_MKL_RT
     LIB_PTHREAD
     MKL_INCLUDE_DIR)
     
-mark_as_advanced(LIB_MKL_RT LIB_PTHREAD MKL_INCLUDE_DIR)
+mark_as_advanced(LIB_MKL_INTERFACE LIB_MKL_THREADING LIB_MKL_CORE LIB_MKL_BLAS95 
+	LIB_MKL_LAPACK95 LIB_MKL_FFTW3 LIB_MKL_RT LIB_PTHREAD MKL_INCLUDE_DIR)
 
 

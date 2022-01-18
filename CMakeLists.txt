@@ -1,14 +1,14 @@
-# CMake project file for SBABL
+# CMake project file for turbogen
 
 ##################################################
 # Define the project and the depencies that it has
 ##################################################
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.5)
-PROJECT(TURBOGEN Fortran)
+PROJECT(turbogen Fortran)
 
 # Set the turbogen version
-SET(VERSION 0.1)
+SET(VERSION 0.0.1)
 
 # Add local modlues to the module path
 SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
@@ -22,37 +22,19 @@ ELSE()
 ENDIF(WIN32)
 ENDIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
-# Uncomment if it is required that Fortran 90 is supported
-#IF(NOT CMAKE_Fortran_COMPILER_SUPPORTS_F90)
-#    MESSAGE(FATAL_ERROR "Fortran compiler does not support F90")
-#ENDIF(NOT CMAKE_Fortran_COMPILER_SUPPORTS_F90)
-
-# Set some options the user may choose
-# Uncomment the below if you want the user to choose a parallelization library
-OPTION(USE_MPI "Use the MPI library for parallelization" ON)
-OPTION(MKL_STATIC "Use static linking for MKL libraries" ON)
-OPTION(MKL_NEEDEXTRA "Import extra libraries, scalapack and cdft" OFF)
-
-# This INCLUDE statement executes code that sets the compile flags for DEBUG,
-# RELEASE, and TESTING.  You should  review this file and make sure the flags 
-# are to your liking.
+# Include the module that sets fortran flags for DEBUG, TESTING, and RELEASE
+# across many different compilers
 INCLUDE(${CMAKE_MODULE_PATH}/SetFortranFlags.cmake)
 
-# Locate and set parallelization libraries.  There are some CMake peculiarities
-# taken care of here, such as the fact that the FindOpenMP routine doesn't know
-# about Fortran.
-INCLUDE(${CMAKE_MODULE_PATH}/SetParallelizationLibrary.cmake)
-
-# Setup the LAPACK libraries.  This also takes care of peculiarities, such as
-# the fact the searching for MKL requires a C compiler, and that the results
-# are not stored in the cache. 
-#INCLUDE(${CMAKE_MODULE_PATH}/SetUpLAPACK.cmake)
+# Find MPI libraries
+FIND_PACKAGE(MPI REQUIRED)
 
 # Setup HDF5 libraries
+SET(HDF5_USE_STATIC_LIBRARIES ON) # Link static libraries for performance
 FIND_PACKAGE(HDF5 COMPONENTS Fortran)
 
-# Setup MKL_DFTI
-INCLUDE(${CMAKE_MODULE_PATH}/FindMKL.cmake)
+# Setup FFTW
+INCLUDE(${CMAKE_MODULE_PATH}/FindFFTW3.cmake)
 
 # There is an error in CMAKE with this flag for pgf90.  Unset it
 GET_FILENAME_COMPONENT(FCNAME ${CMAKE_Fortran_COMPILER} NAME)

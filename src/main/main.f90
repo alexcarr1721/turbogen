@@ -1,53 +1,41 @@
-! Simulation of a 3D turbulent velocity and temperature field *****************
+!******************************************************************************
+!       Generation of turbulent velocity, temperature, and humidity           *
+!       fields using the method of random phase outlined by Ostashev          *
+!       and Wilson (2015).                                                    *
 !                                                                             *
-!   Purpose: This code simulates a 3D turbulent field using the method        *
-!            of Frelich et al. (2000) [Journal of Applied Meteorology].       *
-!            In its current form, the code simulates an incompressible        *
-!            isotropic field whose TKE spectrum is goverened by the           *
-!            von Karman model spectrum. Future work will focus on             *
-!            generalizing the code to simulate fields that are inhomogenous   *
-!            in the vertical direction, and accept TKE spectra as inputs.     *
 !                                                                             *
 !   Author: Alexander N. Carr   ( alexcarr1721@gmail.com )                    *
-!           Ph.D. Student, Theoretical Fluid Dynamics and Turbulence Group    *
+!           Ph.D. Candidate, Theoretical Fluid Dynamics and Turbulence Group  *
 !           University of Florida                                             *
 !           Department of Mechanical and Aerospace Engineering                *
-!                                                                             *
 !******************************************************************************
 
 program main
-    use mpi
-    use hdf5
-    use functions
-    implicit none
-    ! General variables *******************************************************
-    integer(isp)              :: i, j, k, proc, nproc, mpi_err, count, stat
-    integer(isp)              :: zglobal
-    character(len=80)         :: trash, groupname, filename, case, mkdirCmd
+    use iso_fortran_env
+    use mpi 
+    use sbabl_hdf5
+    use turbulence
+    implicit none 
+    ! Program variables *******************************************************
+    integer(int32)      :: i, j, k, global_ind, proc, nproc, mpi_err
+    integer(int32)      :: dimensions
+    character(len=180)  :: trash, fieldname, filename
+    character(len=180)  :: directoryname, mkdirCmd
     !**************************************************************************
-    ! Frequency space variables ***********************************************
-    real(sp), allocatable     :: k1(:), k2(:), k3(:), f1(:), f2(:), f3(:)
+    ! Grid ********************************************************************
+    real(real32), allocatable   :: x1(:), x2(:), x3(:)
+    real(real32)                :: x1min, x2min, x3min, x1max, x2max, x3max
+    integer(int32)              :: x1size, x2size, x3size
+    real(real32), allocatable   :: k1(:), k2(:), k3(:)
     !**************************************************************************
-    ! RGM method variables ****************************************************
-    complex(sp), allocatable  :: w1(:,:,:), w2(:,:,:), w3(:,:,:), wT(:,:,:)
-    complex(sp), allocatable  :: temp1(:,:,:), temp2(:,:,:), temp3(:,:,:)
+    ! Velocities, temperature, and humidity ***********************************
+    real(real32), allocatable   :: u1_2d(:,:), u2_2d(:,:)
+    real(real32), allocatable   :: temperature_2d(:,:), q_2d(:,:)
+    real(real32), allocatable   :: u1_3d(:,:,:), u2_3d(:,:,:), u3_3d(:,:,:)
+    real(real32), allocatable   :: temperature_3d(:,:,:), q_3d(:,:,:)
     !**************************************************************************
-    ! Field variables *********************************************************
-    complex(sp), allocatable  :: u1(:,:,:), u2(:,:,:), u3(:,:,:), T1(:,:,:)
-    real(sp), allocatable     :: ux(:,:,:), uy(:,:,:), uz(:,:,:), Temp(:,:,:)
-    real(sp), allocatable     :: cturb(:,:,:), rhoturb(:,:,:)
-    real(sp), allocatable     :: x(:), y(:), z(:), tau(:)
-    real(sp)                  :: xmin, ymin, zmin, xmax, ymax, zmax
-    integer(isp)              :: xsize, ysize, zsize, tsize
-    real(sp)                  :: mic_loc(3,1000)
-    !**************************************************************************
-    ! Mean Flow variables *****************************************************
-    real(sp)                  :: Ltemp, LTtemp, sigtemp, sigTtemp
-    real(sp)                  :: sigV, sigT, LV, LT
-    real(sp)                  :: c0, rho0, p0, T0, h0
-    real(sp)                  :: psat, pvap, pdry
-    real(sp), allocatable     :: meanzeros(:,:), hbar(:), pbar(:), Tbar(:)
-    real(sp), allocatable     :: rhobar(:), cbar(:), p(:,:,:), pressure(:)
+    ! Isotropic turbulence parameters *****************************************
+    real(real32)                :: sigV, sigT, sigQ, LV, LT, LQ
     !**************************************************************************
 
     ! Get processor information ***********************************************
@@ -56,321 +44,112 @@ program main
     call MPI_COMM_RANK(MPI_COMM_WORLD, proc, mpi_err)
     !**************************************************************************
 
+    ! Get field number information from command line **************************
     if (command_argument_count() .ne. 1) then
-        groupname = "1"
+        fieldname = "1"
     else
-        call get_command_argument(1,groupname)
+        call get_command_argument(1,fieldname)
     end if
     call MPI_Barrier(MPI_COMM_WORLD, mpi_err)
+    filename = "field"
+    !**************************************************************************
 
     ! Read input file *********************************************************
-    count = 0
     if ( proc .eq. 0 ) then
         open(unit = 10, file="input.inp")
         read(10,*) trash
-        read(10,*) trash, case
+        read(10,*) trash, directoryname
         read(10,*) trash
-        read(10,*) trash, xsize 
-        read(10,*) trash, ysize
-        read(10,*) trash, zsize
-        read(10,*) trash, tsize
+        read(10,*) trash, x1size 
+        read(10,*) trash, x2size
+        read(10,*) trash, x3size
         read(10,*) trash
-        read(10,*) trash, xmin
-        read(10,*) trash, xmax
-        read(10,*) trash, ymin
-        read(10,*) trash, ymax
-        read(10,*) trash, zmin
-        read(10,*) trash, zmax
+        read(10,*) trash, x1min
+        read(10,*) trash, x1max
+        read(10,*) trash, x2min
+        read(10,*) trash, x2max
+        read(10,*) trash, x3min
+        read(10,*) trash, x3max
         read(10,*) trash
-        read(10,*) trash, sigtemp
-        read(10,*) trash, Ltemp 
-        read(10,*) trash, sigTtemp 
-        read(10,*) trash, LTtemp
-        read(10,*) trash
-        read(10,*) trash
-        do while (.not. IS_IOSTAT_END(stat))
-            count = count + 1
-            read (10,*,IOSTAT=stat) mic_loc(1,count), mic_loc(2,count), &
-                mic_loc(3,count)
-        end do
+        read(10,*) trash, sigV
+        read(10,*) trash, LV 
+        read(10,*) trash, sigT 
+        read(10,*) trash, LT
+        read(10,*) trash, sigQ 
+        read(10,*) trash, LQ
+        read(10,*) trash 
+        read(10,*) trash, dimensions
         close(10)
     end if
-    call MPI_Bcast(case, 80, MPI_CHARACTER, 0, MPI_COMM_WORLD, mpi_err)
-    case = trim(case)
-    call MPI_Bcast(xmin, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(ymin, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(zmin, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(xmax, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(ymax, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(zmax, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(xsize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(ysize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(zsize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(tsize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(sigtemp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(Ltemp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(sigTtemp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(LTtemp, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(count , 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
-    call MPI_Bcast(mic_loc, count*3, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(directoryname, 180, MPI_CHARACTER, 0, MPI_COMM_WORLD, mpi_err)
+    directoryname = trim(directoryname)
+    call MPI_Bcast(dimensions, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(x1min, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(x2min, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(x3min, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(x1max, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(x2max, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(x3max, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(x1size, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(x2size, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(x3size, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(sigV, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(LV, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(sigT, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(LT, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(sigQ, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_Bcast(LQ, 1, MPI_REAL, 0, MPI_COMM_WORLD, mpi_err)
     call MPI_Barrier(MPI_COMM_WORLD, mpi_err)
     !**************************************************************************
 
-    ! Set parameters **********************************************************
-    sigT = sigTtemp
-    LT   = LTtemp*(1.0/0.746834)
-    sigV = sigtemp
-    LV   = Ltemp*(1.0/0.746834)
-    !**************************************************************************
+    if ( dimensions .eq. 2 ) then
+        goto 100
+    else if ( dimensions .eq. 3 ) then
+        goto 200
+    else
+        goto 100
+    end if
 
-    ! Construct Domain ********************************************************
-    allocate ( x(xsize), y(ysize), z(zsize), tau(tsize) )
-    x = (/ ( ( xmin + (i-1)*( (xmax - xmin)/(size(x,dim=1) - 1) ) &
-        ),i=1,size(x,dim=1) ) /)
-    y = (/ ( ( ymin + (i-1)*( (ymax - ymin)/(size(y,dim=1) - 1) ) &
-        ),i=1,size(y,dim=1) ) /)
-    z = (/ ( ( zmin + (i-1)*( (zmax - zmin)/(size(z,dim=1) - 1) ) &
-        ),i=1,size(z,dim=1) ) /)
-    !**************************************************************************
+    100 continue
 
-    ! Initialize wavenumber and spatial arrays ********************************
-    allocate ( k1(xsize), k2(ysize), k3(zsize) )
-    allocate ( f1(xsize), f2(ysize), f3(zsize) )
-    allocate ( ux(ysize,zsize,xsize/nproc) )
-    allocate ( uy(ysize,zsize,xsize/nproc) )
-    allocate ( uz(ysize,zsize,xsize/nproc) )
-    allocate ( Temp(ysize,zsize,xsize/nproc) )
-    allocate ( u1(ysize,zsize,xsize/nproc) )
-    allocate ( u2(ysize,zsize,xsize/nproc) )
-    allocate ( u3(ysize,zsize,xsize/nproc) )
-    allocate ( T1(ysize,zsize,xsize/nproc) )
-    allocate ( w1(size(ux,dim=3)*nproc,size(ux,dim=1),size(ux,dim=2)/nproc) )
-    allocate ( w2(size(uy,dim=3)*nproc,size(uy,dim=1),size(uy,dim=2)/nproc) )
-    allocate ( w3(size(uz,dim=3)*nproc,size(uz,dim=1),size(uz,dim=2)/nproc) )
-    allocate ( wT(size(T1,dim=3)*nproc,size(T1,dim=1),size(T1,dim=2)/nproc) )
-    allocate ( temp1(2,2,2))
-    allocate ( temp2(2,2,2))
-    allocate ( temp3(2,2,2))
-    allocate ( meanzeros(xsize, ysize), hbar(xsize), pbar(xsize), Tbar(xsize) )
-    allocate ( cbar(xsize), rhobar(xsize), p(tsize, ysize, zsize/nproc) )
-    allocate ( pressure(tsize), cturb(ysize, zsize, xsize/nproc) )
-    allocate ( rhoturb(ysize, zsize, xsize/nproc) )
+    ! Construct domain ********************************************************
+    allocate ( x1(x1size), x2(x2size) )
+    x1 = (/ ( ( x1min + (i-1)*( (x1max - x1min)/(size(x1,dim=1) - 1) ) ),i=1,size(x1,dim=1) ) /)
+    x2 = (/ ( ( x2min + (i-1)*( (x2max - x2min)/(size(x2,dim=1) - 1) ) ),i=1,size(x2,dim=1) ) /)
     !**************************************************************************
 
     ! Construct wavenumbers ***************************************************
-    f1 = fourier_space(x)
-    f2 = fourier_space(y)
-    f3 = fourier_space(z)
-    k1 = 2.0*pi*f1
-    k2 = 2.0*pi*f2 
-    k3 = 2.0*pi*f3
-    if ( proc .eq. 0 ) write (*,*) f1
+    allocate ( k1(x1size), k2(x2size) )
+    k1 = generate_wavenumbers(x1)
+    k2 = generate_wavenumbers(x2)
     !**************************************************************************
 
-    ! Construct w *************************************************************
-    call construct_w(w1, w2, w3, wT, k1, k2, k3, sigV, LV, sigT, LT, "ii", &  ! y is the last index of w, that is why k2 is considered kz here
-        MPI_COMM_WORLD)
-    !**************************************************************************
-
-    ! Compute iFFT in x ( 1st dimension of w ) ********************************
-    call mkl_fft(w1(:,1,1), [size(ux,dim=3)*nproc,size(ux,dim=1),&
-        size(ux,dim=2)/nproc], 1, inverse=.true. )
-    call mkl_fft(w2(:,1,1), [size(uy,dim=3)*nproc,size(uy,dim=1),&
-        size(uy,dim=2)/nproc], 1, inverse=.true. )
-    call mkl_fft(w3(:,1,1), [size(uz,dim=3)*nproc,size(uz,dim=1),&
-        size(uz,dim=2)/nproc], 1, inverse=.true. )
-    call mkl_fft(wT(:,1,1), [size(T1,dim=3)*nproc,size(T1,dim=1),&
-        size(T1,dim=2)/nproc], 1, inverse=.true. )
-    !**************************************************************************
-
-    ! Transpose out of place **************************************************
-    call transpose(u1(:,1,1), temp1(:,1,1), w1(:,1,1), [size(ux,dim=1),&
-        size(ux,dim=2),size(ux,dim=3)], [2,2,2], [size(ux,dim=3)*nproc,&
-        size(ux,dim=1),size(ux,dim=2)/nproc], 231, MPI_COMM_WORLD )
-    call transpose(u2(:,1,1), temp2(:,1,1), w2(:,1,1), [size(uy,dim=1),&
-        size(uy,dim=2),size(uy,dim=3)], [2,2,2], [size(uy,dim=3)*nproc,&
-        size(uy,dim=1),size(uy,dim=2)/nproc], 231, MPI_COMM_WORLD  )
-    call transpose(u3(:,1,1), temp3(:,1,1), w3(:,1,1), [size(uz,dim=1),&
-        size(uz,dim=2),size(uz,dim=3)], [2,2,2], [size(uz,dim=3)*nproc,&
-        size(uz,dim=1),size(uz,dim=2)/nproc], 231, MPI_COMM_WORLD  )
-    call transpose(T1(:,1,1), temp3(:,1,1), wT(:,1,1), [size(T1,dim=1),&
-        size(T1,dim=2),size(T1,dim=3)], [2,2,2], [size(T1,dim=3)*nproc,&
-        size(T1,dim=1),size(T1,dim=2)/nproc], 231, MPI_COMM_WORLD  )
-    !**************************************************************************
-
-    ! Compute iFFT in z, y ****************************************************
-    call mkl_fft(u1(:,1,1), [size(ux,dim=1),size(ux,dim=2),size(ux,dim=3)],&
-        2, inverse=.true. )
-    call mkl_fft(u2(:,1,1), [size(uy,dim=1),size(uy,dim=2),size(uy,dim=3)],&
-        2, inverse=.true. )
-    call mkl_fft(u3(:,1,1), [size(ux,dim=1),size(ux,dim=2),size(ux,dim=3)],&
-        2, inverse=.true. )
-    call mkl_fft(T1(:,1,1), [size(T1,dim=1),size(T1,dim=2),size(T1,dim=3)],&
-        2, inverse=.true. )
-    !**************************************************************************
-
-    ux = real(u1)
-    uy = real(u2)
-    uz = real(u3)
-    Temp = real(T1)
-
-    ! Set mean values
-    c0 = 343.0 ! m/s
-    rho0 = 1.225 
-    T0 = 288.15
-    p0 = 101325.0
-    h0 = 0
-    pbar = p0
-    Tbar = T0
-    hbar = h0
-    meanzeros = 0.0
-
-    ! Turbulent fields of density and speed of sound **************************
-    ! Mean flow
-    do i = 1,size(x,dim=1)
-        psat = 6.1078_sp * 10.0_sp**(7.5_sp*(Tbar(i))/( &
-            (Tbar(i) ) + 237.3_sp))
-        pvap = psat*hbar(i)
-        pdry = p0 - pvap 
-        rhobar(i) = pdry/(287.058*( Tbar(i) ) ) + &
-            pvap/(461.495*( Tbar(i) ) )
-        cbar(i) = sqrt( 1.4*p0/rhobar(i) )
-    end do
-    do k = 1,size(ux,dim=3)
-        zglobal = k + proc*size(ux,dim=3)
-        do j = 1,size(ux,dim=2)
-            do i = 1,size(ux,dim=1)
-                ! Total field *************************************************
-                psat = 6.1078_sp * 10.0_sp**(7.5_sp*(Tbar(zglobal) + &
-                    Temp(i,j,k))/( (Tbar(zglobal) + Temp(i,j,k) ) + 237.3_sp))
-                pvap = psat*hbar(zglobal)
-                pdry = p0 - pvap 
-                rhoturb(i,j,k) = pdry/(287.058*( Tbar(zglobal) + Temp(i,j,k) ) ) + &
-                    pvap/(461.495*( Tbar(zglobal) + Temp(i,j,k) ) )
-                cturb(i,j,k) = sqrt( 1.4*p0/rhoturb(i,j,k) )
-                ! Subtract mean flow from turbulent variables to get true *****
-                ! fluctuations ************************************************
-                rhoturb(i,j,k) = rhoturb(i,j,k) - rhobar(zglobal)
-                cturb(i,j,k)   = cturb(i,j,k) - cbar(zglobal)
-            end do 
-        end do
-    end do
-    !**************************************************************************
-
-    ! Pressure input **********************************************************
-    call read_waveform("waveform.inp", pressure, tau, MPI_COMM_WORLD)
-    do j = 1,zsize/nproc
-        do i = 1,ysize 
-            p(:,i,j) = pressure(:)
-        end do 
-    end do
-
-    ! ! Write to text file
-    ! open(unit=10, file="F18_waveform.dat")
-    ! write (10,*) "t (s)   ", "pressure (pa)   ", "sampling frequency (Hz) = ", size(tau,1)/( tau(size(tau,1)) - tau(1) )
-    ! do i = 1,size(tau,dim=1)
-    !     write (10,*) tau(i), p(i,1,1)
-    ! end do
-    ! close(10)
+    ! Generate isotropic ******************************************************
+    allocate ( u1_2d(x1size, x2size/nproc), u2_2d(x1size, x2size/nproc) )
+    allocate ( temperature_2d(x1size, x2size/nproc), q_2d(x1size, x2size/nproc) )
+    call generate_isotropic(u1_2d, u2_2d, temperature_2d, q_2d, k1, k2, sigV, LV, sigT, LT, sigQ, LQ)
     !**************************************************************************
 
     ! Write to file ***********************************************************
-    mkdirCmd = 'mkdir -p '//trim(case)
+    mkdirCmd = 'mkdir -p '//trim(directoryname)
     call system( mkdirCmd )
-    filename = trim(case)//"/"//"field"//trim(groupname)//".h5"
-    call create_h5_f(filename, MPI_COMM_WORLD, &
-        (/"pressure   ","grid       ","turb       ","mean       ",&
-        "microphones","routines   "/) )
-    call create_h5_d(filename, "pressure/initial", [size(p,dim=1),&
-        size(p,dim=2), size(p,dim=3)*nproc], MPI_COMM_WORLD, p(:,1,1),&
-        chunked=.true., dim_chunk=shape(p), &
-        offset=[0, 0, proc*size(p,dim=3)])
-    call create_h5_d(filename, "turb/ux1", [size(ux,dim=1),&
-        size(uy,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, ux(:,1,1),&
-        chunked=.true., dim_chunk=shape(ux), &
-        offset=[0, 0, proc*size(ux,dim=3)])
-    call create_h5_d(filename, "turb/ux2", [size(uy,dim=1),&
-        size(uy,dim=2), size(uy,dim=3)*nproc], MPI_COMM_WORLD, uy(:,1,1),&
-        chunked=.true., dim_chunk=shape(uy), &
-        offset=[0, 0, proc*size(uy,dim=3)])
-    call create_h5_d(filename, "turb/ux3", [size(uz,dim=1),&
-        size(uz,dim=2), size(uz,dim=3)*nproc], MPI_COMM_WORLD, uz(:,1,1),&
-        chunked=.true., dim_chunk=shape(uz), &
-        offset=[0, 0, proc*size(uz,dim=3)])
-    call create_h5_d(filename, "turb/temperature", [size(T1,dim=1),&
-        size(T1,dim=2), size(T1,dim=3)*nproc], MPI_COMM_WORLD, Temp(:,1,1),&
-        chunked=.true., dim_chunk=shape(Temp), &
-        offset=[0, 0,proc*size(T1,dim=3)])
-    call create_h5_d(filename, "turb/c", [size(cturb,dim=1),&
-        size(cturb,dim=2), size(cturb,dim=3)*nproc], MPI_COMM_WORLD, &
-        cturb(:,1,1), chunked=.true., dim_chunk=shape(cturb), &
-        offset=[0, 0,proc*size(cturb,dim=3)])
-    call create_h5_d(filename, "turb/rho", [size(rhoturb,dim=1),&
-        size(rhoturb,dim=2), size(rhoturb,dim=3)*nproc], MPI_COMM_WORLD, &
-        rhoturb(:,1,1), chunked=.true., dim_chunk=shape(rhoturb), &
-        offset=[0, 0,proc*size(rhoturb,dim=3)])
-    ! call create_h5_d(filename, "turb/drhodx1", [size(rhoturbx,dim=1),&
-    !     size(rhoturbx,dim=2), size(rhoturbx,dim=3)*nproc], MPI_COMM_WORLD, &
-    !     rhoturbx(:,1,1), chunked=.true., dim_chunk=shape(rhoturbx), &
-    !     offset=[0, 0,proc*size(rhoturbx,dim=3)])
-    ! call create_h5_d(filename, "turb/drhodx2", [size(rhoturby,dim=1),&
-    !     size(rhoturby,dim=2), size(rhoturby,dim=3)*nproc], MPI_COMM_WORLD, &
-    !     rhoturby(:,1,1), chunked=.true., dim_chunk=shape(rhoturby), &
-    !     offset=[0, 0,proc*size(rhoturby,dim=3)])
-    ! call create_h5_d(filename, "turb/drhodx3", [size(rhoturbz,dim=1),&
-    !     size(rhoturbz,dim=2), size(rhoturbz,dim=3)*nproc], MPI_COMM_WORLD, &
-    !     rhoturbz(:,1,1), chunked=.true., dim_chunk=shape(rhoturbz), &
-    !     offset=[0, 0,proc*size(rhoturbz,dim=3)])
-    call create_h5_d(filename, "mean/sigV", [1], &
-        MPI_COMM_WORLD,[sigV])
-    call create_h5_d(filename, "mean/sigT", [1], &
-        MPI_COMM_WORLD,[sigT])
-    call create_h5_d(filename, "mean/LV", [1], MPI_COMM_WORLD, [LV])
-    call create_h5_d(filename, "mean/LT", [1], MPI_COMM_WORLD, [LT])
-    call create_h5_d(filename, "mean/Vx1", [size(meanzeros,dim=1), &
-        size(meanzeros,dim=2)], MPI_COMM_WORLD, meanzeros(:,1))
-    call create_h5_d(filename, "mean/Vx2", [size(meanzeros,dim=1), &
-        size(meanzeros,dim=2)], MPI_COMM_WORLD,  meanzeros(:,1))
-    call create_h5_d(filename, "mean/Vx3", [size(meanzeros,dim=1), &
-        size(meanzeros,dim=2)], MPI_COMM_WORLD, meanzeros(:,1))
-    call create_h5_d(filename, "mean/Tbar", [size(Tbar,dim=1)], MPI_COMM_WORLD, Tbar)
-    call create_h5_d(filename, "mean/hbar", [size(hbar,dim=1)], MPI_COMM_WORLD, hbar)
-    call create_h5_d(filename, "mean/cbar", [size(cbar,dim=1)], &
-        MPI_COMM_WORLD, cbar)
-    call create_h5_d(filename, "mean/rhobar", [size(rhobar,dim=1)], &
-        MPI_COMM_WORLD, rhobar)
-    call create_h5_d(filename, "mean/pbar", [size(pbar,dim=1)], &
-        MPI_COMM_WORLD, pbar)
-    call create_h5_d(filename, "mean/c0", [ 1 ], &
-        MPI_COMM_WORLD, [c0] )
-    call create_h5_d(filename, "mean/rho0", [ 1 ], &
-        MPI_COMM_WORLD, [rho0] )
-    call create_h5_d(filename, "grid/x1", [size(x,dim=1)], MPI_COMM_WORLD, x)
-    call create_h5_d(filename, "grid/x2", [size(y,dim=1)], MPI_COMM_WORLD, y)
-    call create_h5_d(filename, "grid/x3", [size(z,dim=1)], MPI_COMM_WORLD, z)
-    call create_h5_d(filename, "grid/t", [size(tau,dim=1)], MPI_COMM_WORLD, &
-        tau)
-    call create_h5_d(filename,"routines/nonlinear",(/1/), &
-        MPI_COMM_WORLD, [1.0] )
-    call create_h5_d(filename,"routines/diffraction",(/1/), &
-        MPI_COMM_WORLD, [1.0] )
-    call create_h5_d(filename,"routines/absorption",(/1/), &
-        MPI_COMM_WORLD, [1.0] )
-    call create_h5_d(filename,"routines/phase",(/1/), &
-        MPI_COMM_WORLD, [1.0] )
-    call create_h5_d(filename,"routines/coupling",(/1/), &
-        MPI_COMM_WORLD, [1.0] )
-    call create_h5_d(filename,"routines/boundaryconditions",(/1/), &
-        MPI_COMM_WORLD, [0.0] )
-    call create_h5_d(filename,"microphones/location",(/3, count-1/), &
-        MPI_COMM_WORLD, mic_loc(:,1))
-    call create_h5_d(filename,"propagation_direction",(/1/), MPI_COMM_WORLD,&
-        (/0.0/) )
+    filename = trim(directoryname)//"/"//trim(filename)//trim(fieldname)//".h5"
+    ! Create file
+    call create_h5_f(filename, MPI_COMM_WORLD)
+    call create_h5_d(filename, "u1", [x1size, x2size], MPI_COMM_WORLD, u1_2d(:,1), &
+        chunked=.true., dim_chunk=[x1size, x2size/nproc], offset=[0, proc*(x2size/nproc)] )
+    call create_h5_d(filename, "u2", [x1size, x2size], MPI_COMM_WORLD, u2_2d(:,1), &
+        chunked=.true., dim_chunk=[x1size, x2size/nproc], offset=[0, proc*(x2size/nproc)] )
+    call create_h5_d(filename, "temperature", [x1size, x2size], MPI_COMM_WORLD, temperature_2d(:,1), &
+        chunked=.true., dim_chunk=[x1size, x2size/nproc], offset=[0, proc*(x2size/nproc)] )
+    call create_h5_d(filename, "q", [x1size, x2size], MPI_COMM_WORLD, q_2d(:,1), &
+        chunked=.true., dim_chunk=[x1size, x2size/nproc], offset=[0, proc*(x2size/nproc)] )
     !**************************************************************************
 
+    deallocate ( x1, x2, k1, k2, u1_2d, u2_2d, temperature_2d, q_2d )
 
-    deallocate ( k1, k2, k3, f1, f2, f3, ux, uy, uz, Temp, u1, u2, u3, T1, &
-        w1, w2, w3, wT, x, y, z )
+    200 continue
+
     call MPI_FINALIZE(mpi_err)
 
 end program main

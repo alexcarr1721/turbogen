@@ -144,6 +144,8 @@ program main
         chunked=.true., dim_chunk=[x1size, x2size/nproc], offset=[0, proc*(x2size/nproc)] )
     call create_h5_d(filename, "q", [x1size, x2size], MPI_COMM_WORLD, q_2d(:,1), &
         chunked=.true., dim_chunk=[x1size, x2size/nproc], offset=[0, proc*(x2size/nproc)] )
+    call create_h5_d(filename, "x1", [x1size], MPI_COMM_WORLD, x1)
+    call create_h5_d(filename, "x2", [x2size], MPI_COMM_WORLD, x2)
     !**************************************************************************
 
     deallocate ( x1, x2, k1, k2, u1_2d, u2_2d, temperature_2d, q_2d )

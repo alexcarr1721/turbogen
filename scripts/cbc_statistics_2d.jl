@@ -67,7 +67,7 @@ function d2fdx2_6(
     )
 
     # Automatic zero boundary condition
-    dfdx = zero(f)
+    dfdx = zeros(Float32, size(f,1))
     for i ∈ 1:size(f,1)-6
         h = x[i+1] - x[i]
         dfdx[i] = (812*f[i]-3132*f[i+1]+5265*f[i+2]-5080*f[i+3]
@@ -87,6 +87,9 @@ function integrate_to_zero(
         if ( (f[i] > 0) && (f[i+1] <= 0) )
             index_zero = i + 1
             break
+        end
+        if ( i == size(f,1)-1 )
+            index_zero = i + 1
         end
     end
 
@@ -133,6 +136,24 @@ function fourier_space(
     return f
 end
 
+# function fg_model(
+#     r::AbstractArray{<:Number,N} where N,
+#     σ::Number,  # Standard deviation
+#     Lo::Number  # Outer length scale
+#     )
+#
+#     f_model = zero(r)
+#     g_model = zero(r)
+#
+#     for i ∈ 1:size(r,1)
+#         f_model[i] = σ^2 * (0.5925485*((r[i]/Lo)^(1/3))*besselk(1/3,r[i]/Lo))
+#         g_model[i] = σ^2 * 0.5925485 * ((r[i]/Lo)^(1/3))*(
+#             (4/3)*besselk(1/3,r[i]/Lo) - 0.5*(r[i]/Lo)*besselk(4/3,r[i]/Lo) )
+#     end
+#
+#     return f_model, g_model
+# end
+
 function fg_model(
     r::AbstractArray{<:Number,N} where N,
     σ::Number,  # Standard deviation
@@ -142,14 +163,20 @@ function fg_model(
     f_model = zero(r)
     g_model = zero(r)
 
-    for i ∈ 1:size(r,1)
-        f_model[i] = σ^2 * (0.5925485*((r[i]/Lo)^(1/3))*besselk(1/3,r[i]/Lo))
-        g_model[i] = σ^2 * 0.5925485 * ((r[i]/Lo)^(1/3))*(
-            (4/3)*besselk(1/3,r[i]/Lo) - 0.5*(r[i]/Lo)*besselk(4/3,r[i]/Lo) )
+    for i = 1:size(r,1)
+        if r[i] == 0
+            f_model[i] = 1.0
+            g_model[i] = 1.0
+        else
+            f_model[i] = 1.0 * (0.5925485*((r[i]/Lo)^(1/3))*besselk(1/3,r[i]/Lo))
+            g_model[i] = 1.0 * 0.5925485 * ((r[i]/Lo)^(1/3))*(
+                (4/3)*besselk(1/3,r[i]/Lo) - 0.5*(r[i]/Lo)*besselk(4/3,r[i]/Lo) )
+        end
     end
 
     return f_model, g_model
 end
+
 
 # Parameters ###################################################################
 L_f = 0.0240 # Longitudinal integral scale

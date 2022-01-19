@@ -127,7 +127,8 @@ program main
     ! Generate isotropic ******************************************************
     allocate ( u1_2d(x1size, x2size/nproc), u2_2d(x1size, x2size/nproc) )
     allocate ( temperature_2d(x1size, x2size/nproc), q_2d(x1size, x2size/nproc) )
-    call generate_isotropic(u1_2d, u2_2d, temperature_2d, q_2d, k1, k2, sigV, LV, sigT, LT, sigQ, LQ)
+    call generate_isotropic(u1_2d, u2_2d, temperature_2d, q_2d, k1, k2, sigV, &
+        LV, sigT, LT, sigQ, LQ, mode="all", comm=MPI_COMM_WORLD)
     !**************************************************************************
 
     ! Write to file ***********************************************************

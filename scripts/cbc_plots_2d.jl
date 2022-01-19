@@ -18,23 +18,29 @@ Longitudinal_correlation = h5read(filename, "correlations/Longitudinal_correlati
 Lateral_correlation = h5read(filename, "correlations/Lateral_correlation")
 ################################################################################
 
+try
+    mkdir("fig")
+catch
+    # Do nothing
+end
+
 # Contour plots ################################################################
 u1_contour_fig = heatmap(x1./L_f, x2./L_f, u1'./u0,
     xlabel=latexstring("x_1 L_f^{-1}"), ylabel=latexstring("x_2 L_f^{-1}"),
-    xlims=(-10,10), ylims=(-10,10), colorbar_title=latexstring("u_1 U_0^{-1}"))
+    xlims=(-5,5), ylims=(-5,5), colorbar_title=latexstring("u_1 U_0^{-1}"))
 display(u1_contour_fig)
 savefig(u1_contour_fig,"fig/u1_cbc.pdf")
 
 u2_contour_fig = heatmap(x1./L_f, x2./L_f, u2'./u0,
     xlabel=latexstring("x_1 L_f^{-1}"), ylabel=latexstring("x_2 L_f^{-1}"),
-    xlims=(-10,10), ylims=(-10,10), colorbar_title=latexstring("u_2 U_0^{-1}"))
+    xlims=(-5,5), ylims=(-5,5), colorbar_title=latexstring("u_2 U_0^{-1}"))
 display(u2_contour_fig)
 savefig(u2_contour_fig,"fig/u2_cbc.pdf")
 ################################################################################
 
 # Correlations #################################################################
 fg_x1_plot = plot(x1.-x1[1], Longitudinal_correlation, xlabel="r [m]",
-    label="f(r)", lw = 2, xlims=(0,2), linecolor=1, ylabel="f(r), g(r)")
+    label="f(r)", lw = 2, xlims=(0,0.3), linecolor=1, ylabel="f(r), g(r)")
 plot!(x1.-x1[1], Lateral_correlation, label="g(r)", lw = 2, linecolor=2)
 plot!(x1.-x1[1], f_model, label="f(r) model", lw = 2, linestyle=:dash, linecolor=1)
 plot!(x1.-x1[1], g_model, label="g(r) model", lw = 2, linestyle=:dash, linecolor=2)

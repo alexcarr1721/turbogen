@@ -1,7 +1,7 @@
 using HDF5
 
 filename = "cbc.h5"
-num_of_fields = 500
+num_of_fields = 20
 
 x1 = h5read(string("field",1,".h5"),"x1")
 x2 = h5read(string("field",1,".h5"),"x2")
